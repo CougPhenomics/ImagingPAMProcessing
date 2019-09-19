@@ -33,7 +33,7 @@ os.makedirs(fluordir, exist_ok=True)
 
 # %% pixel pixel_resolution
 # mm (this is approx and should only be used for scalebar)
-pixelresolution = 0.2
+pixelresolution = 0.35
 
 # %% Import tif files
 # importlib.reload(import_snapshots)
@@ -224,84 +224,7 @@ def image_avg(fundf):
             inbounds.append(pcv.within_frame(plant_mask))
             plantarea.append(obj_area * pixelresolution**2.)
             plantarea.append(obj_area * pixelresolution**2.)
-            # with open(os.path.join(outdir, outfn + '_roi' + str(i) + '.txt'), 'w') as f:
-            #     for item in yii_avg:
-            #         f.write("%s\n" % item)
 
-            # #setup pseudocolor image size
-            # hgt, wdth = np.shape(newmask)
-            # figframe = len(roi_c)
-            # if len(roi_c) == 2:
-            #     if i == 0:
-            #         p1 = (int(0), int(0))
-            #         p2 = (int(hgt), int(hgt))
-            #     elif i == 1:
-            #         p1 = (int(wdth-hgt), int(0))
-            #         p2 = (int(wdth), int(hgt))
-            # elif len(roi_c) == 1:
-            #     cutwidth = (wdth-hgt)/2
-            #     p1 = (int(cutwidth), int(0))
-            #     p2 = (int(cutwidth+hgt), int(hgt))
-            # elif len(roi_c) == 9:
-            #     cutwidth = (wdth-hgt)/3
-            #     if i == 0:
-            #         p1 = (int(cutwidth), int(25))
-            #         p2 = (int(cutwidth+hgt/3), int(hgt/3+25))
-            # else:
-            #     figframe = None
-
-            # if figframe is not None:
-            #     _, _, figframe, _ = pcv.rectangle_mask(
-            #         plant_mask, p1, p2, color='white')
-            #     figframe = figframe[0]
-
-            # # print pseduocolor
-            # imgdir = os.path.join(
-            #     outdir, 'pseudocolor_images', sampleid, 'roi' + str(i))
-            # if param_name == 'FvFm':
-            #     imgdir = os.path.join(imgdir, 'fvfm')
-            #     os.makedirs(imgdir, exist_ok=True)
-            # else:
-            #     imgdir = os.path.join(imgdir, 'IndC')
-            #     os.makedirs(imgdir, exist_ok=True)
-            #     npq_img = pcv.visualize.pseudocolor(NPQ,
-            #                                         obj=figframe,
-            #                                         mask=plant_mask,
-            #                                         cmap='inferno',
-            #                                         axes=False,
-            #                                         min_value=0,
-            #                                         max_value=2.5,
-            #                                         background='black',
-            #                                         obj_padding=0)
-            #     npq_img = add_scalebar.add_scalebar(npq_img,
-            #                                         pixelresolution = pixelresolution,
-            #                                         barwidth=20,
-            #                                         barlocation='lower left')
-            #     npq_img.savefig(os.path.join(
-            #         imgdir, outfn + '_roi' + str(i) + '_NPQ.png'),
-            #         bbox_inches='tight')
-            #     npq_img.clf()
-            # #end ifelse print npq
-
-            # yii_img = pcv.visualize.pseudocolor(
-            #     YII,
-            #     obj=figframe,
-            #     mask=plant_mask,
-            #     cmap=custom_colormaps.get_cmap('imagingwin'),
-            #     axes=False,
-            #     min_value=0,
-            #     max_value=1,
-            #     background='black',
-            #     obj_padding=0
-            # )
-            # yii_img = add_scalebar.add_scalebar(yii_img,
-            #                                     pixelresolution=pixelresolution,
-            #                                     barwidth=20,
-            #                                     barlocation='lower left')
-            # yii_img.savefig(os.path.join(imgdir,
-            #                              outfn + '_roi' + str(i) + '_YII.png'),
-            #                 bbox_inches='tight')
-            # yii_img.clf()
         # end try-except-else
     # end roi loop
 
