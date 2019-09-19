@@ -13,9 +13,9 @@ These scripts can be used to efficiently process sets of image files from a Walz
 
 The workflow in this repository uses both Python and R and assumes you are familiar enough with these to use them. In general though, there is very little code you should need to modify.
 
-The quickest way to install python, jupyter, and plantcv is with [Miniconda](!https://docs.conda.io/en/latest/miniconda.html) (a lightweight version of Anaconda). Follow the installation instructions for [plantcv](!https://plantcv.readthedocs.io/en/stable/installation/) to get everything setup. You may also need to install additional packages as defined at the top of the scripts.
+The quickest way to install python, jupyter, and plantcv is with [Miniconda](https://docs.conda.io/en/latest/miniconda.html) (a lightweight version of Anaconda). Follow the installation instructions for [plantcv](https://plantcv.readthedocs.io/en/stable/installation/) to get everything setup. You may also need to install additional packages as defined at the top of the scripts.
 
-To install R, download [R from CRAN](!https://www.r-project.org/) and then install [RStudio](!https://www.rstudio.com/) to make it easier to work with R scripts.
+To install R, download [R from CRAN](https://www.r-project.org/) and then install [RStudio](https://www.rstudio.com/) to make it easier to work with R scripts.
 
 Lastly, download this repository as a .zip file (see green "Clone or download" button) and extract it to your computer.
 
@@ -65,10 +65,10 @@ See `diy_data/` for the dataset used in the manuscript.
 
 ## Run the Image Processing
 
-At the very least, you will need need to modify `scripts/psII.py` in 1 place:
+At the very least, you will need need to modify [`scripts/psII.py`](scripts/psII.py) in 1 place:
 1. you must change `indir` to point to your data directory.
 
-It is also likely you will need to modify the location of the ROI to indicate where the plants are in the image. Even if you are using the 9 plant arrangement using the sample crate and 9 pot holders described in the text, it is likely your working distance will be slighlty different and therefore your plant positions will be different relative to the image frame. In this case you must change the location of your ROI's as prescibed with `pcv.roi.multi()` in `scripts/psII.py`. See [plantcv documentation](!https://plantcv.readthedocs.io/en/stable/roi_multi/) for details. You can test your ROI arrangement by stepping through the analysis with a single image.
+It is also likely you will need to modify the location of the ROI to indicate where the plants are in the image. Even if you are using the 9 plant arrangement using the sample crate and 9 pot holders described in the text, it is likely your working distance will be slighlty different and therefore your plant positions will be different relative to the image frame. In this case you must change the location of your ROI's as prescibed with `pcv.roi.multi()` in `scripts/psII.py`. See [plantcv documentation](https://plantcv.readthedocs.io/en/stable/roi_multi/) for details. You can test your ROI arrangement by stepping through the analysis with a single image.
 
 To run the pipeline, make sure your plantcv python environment is in your path. Open the project directory (this repository that you extracted from the zip) in a terminal/cmd window that includes your conda environment (note the (plantcv) on the left):
 
@@ -79,7 +79,7 @@ To run the pipeline, make sure your plantcv python environment is in your path. 
 
 ## Confirming Image Segmentation
 
-The script provided does some automatic image segmentation to identify the plant area in the images. *It is important that you confirm the masks are reasonably accurate*. Running the analysis will create mask files for each sample in `output/from_diy_data/masks` so you can determine if plants were correctly identified. You may need to change the masking procedure if your lighting conditions are substantially different than ours or if you get a lot of algae growth. To do so you will need to change the function `psIImask()` in `src/segmentation/create_masks.py`. Please see the tutorials in the [plantcv documentation](!https://plantcv.readthedocs.io/en/stable/psII_tutorial/) for more guidance.
+The script provided does some automatic image segmentation to identify the plant area in the images. *It is important that you confirm the masks are reasonably accurate*. Running the analysis will create mask files for each sample in `output/from_diy_data/masks` so you can determine if plants were correctly identified. You may need to change the masking procedure if your lighting conditions are substantially different than ours or if you get a lot of algae growth. To do so you will need to change the function `psIImask()` in `src/segmentation/create_masks.py`. Please see the tutorials in the [plantcv documentation](https://plantcv.readthedocs.io/en/stable/psII_tutorial/) for more guidance.
 
 ## Visualizing the Extracted Phenotypes
 
