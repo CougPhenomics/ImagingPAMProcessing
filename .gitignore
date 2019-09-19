@@ -40,3 +40,4 @@ dask*/
 # exclude output on default but allow experiment 1 output as examples
 output/from_diy_data/fluorescence
 
+*.zip
