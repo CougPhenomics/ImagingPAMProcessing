@@ -1,0 +1,42 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# DotEnv configuration
+.env
+
+# Database
+*.db
+*.rdb
+
+# Pycharm
+.idea
+
+# VS Code
+.vscode/
+.vs/
+
+# Spyder
+.spyproject/
+
+# Jupyter NB Checkpoints
+.ipynb_checkpoints/
+
+# Mac OS-specific storage files
+.DS_Store
+
+# Remove R files
+*.Rproj
+.Rhistory
+
+# Remove Dask files
+dask*/
+.Rproj.user
+
+# debug folder
+#debug/
+
+# output tif files don't version control well
+# exclude output on default but allow experiment 1 output as examples
+output/from_diy_data/fluorescence
+

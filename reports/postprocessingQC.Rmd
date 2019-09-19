@@ -1,0 +1,1015 @@
+---
+title: "Post-Processing QC"
+author: "Dominik Schneider"
+date: "`r strftime(Sys.Date(),'%b %d, %Y')`"
+output:
+  bookdown::html_document2: 
+    df_print: paged
+    fig_caption: yes
+    fig_height: 16
+    fig_width: 16
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    self_contained: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=F, message=F, warning = F, fig.width=16)
+library(tidyverse)
+library(tidylog)
+library(here)
+library(cowplot)
+library(scico)
+```
+
+```{r setup_plotdir}
+datadir = here('output','from_diy_data')
+figdir = here(datadir,'figs')
+dir.create(figdir, rec=T)
+```
+
+# Read data from image analysis
+
+```{r readdata, include=T}
+data = read_csv(file.path(datadir,'output_psII_level0.csv'), #reading the data from the image processing where we explicitly define what NA values look like
+                na=c('nan','--') ) %>% 
+  mutate(date = as.Date(date), #formatting dates properly makes plotting easier
+         idate = date-min(date)+1, #days after treatment begins
+         treatment = as_factor(treatment), #creating factors will make plotting order easier to change
+         gtype = toupper(gtype), #unifying all mutant codes uppercase so that wildtype is  'WT'
+         gtype = as_factor(gtype),
+         gtype = fct_relevel(gtype,sort),
+         gtype = fct_relevel(toupper(gtype),'WT',after=0), #putting WT to the front of the list so we can color it black always
+         measurement = case_when(parameter == 'FvFm' ~ 'FvFm', #this will help group the different PSII parameters between Fv/Fm and Induction Curve
+                                 TRUE ~ 'IndC'),
+         parameter = as_factor(parameter),
+         plantarea = plantarea * 3.0625) # we should reprocess the images. original resolution guess was 0.2 mm/pixel. Measured res was 0.35. This is 3.0625 times more area per square pixel. remove this if psII.py is rerun with the right pixel resolution.
+```
+
+```{r gtypeColors, include=F}
+# set your genotype color palette. 'black' is always WT 
+gtypeColors = c('black',RColorBrewer::brewer.pal(length(levels(data$gtype))-1,'Set2'))
+names(gtypeColors) <- levels(data$gtype)
+
+italic_labels <- function(names){
+  if(is.factor(names)){
+    names = as.character(names)
+  }
+sapply(strsplit(names,'[. ]'), 
+  function(x) {
+    if( all(x != 'WT') & length(x)>1){
+      x=tolower(x)
+        # parse(text = paste0(x[1],".","italic(", tolower(x[2]), ")"))
+        bquote(paste(.(x[1]),".",italic(.(x[2]))))
+      # substitute(paste(treatment,".",italic(gtype), list(treatment = tolower(x[1]) , gtype=tolower(x[2]) ) ))
+    } else if(all(x!='WT') & length(x)==1){
+      x=tolower(x)
+      substitute(italic(gtype), list(gtype=tolower(x) ) )
+        # parse(text = paste0("italic(", tolower(x), ")"))
+    } else if(length(x)>1){
+        paste(x[1],x[2],sep='.')
+    } else {
+        x
+    }
+  })}
+
+```
+
+# Check image results
+
+During image processing the detected objects are checked for:
+
+  1. whether the plant is completely in frame (top row) 
+  
+  2. whether the plants are unique (bottom row)
+
+
+```{r plot, echo=F, message=F, fig.height=8, fig.width=20}
+data %>% 
+  filter(parameter == 'FvFm') %>% 
+  gather(qc, qcvalue, obj_in_frame:unique_roi) %>%
+ggplot()+
+  geom_tile(aes(x=sampleid,y=roi,fill=qcvalue),colour='grey80')+
+  facet_grid(qc~date)+
+  scale_y_continuous(limits=c(-1,9), breaks = seq(0,8), expand = c(0,0))+
+  coord_fixed()+
+  theme_cowplot(font_size = 18)+
+  theme(axis.text.x = element_text(angle=90, vjust=0.5))+
+  labs(title = 'Image processing quality control checks',
+       subtitle = 'FALSE means the quality check was tripped.\nTRUE means the quality check was not tripped.\nNA means there was no plant in the image.')
+
+
+```
+
+# Subset Valid data
+
+For subsequent plots we will remove invalid datapoints based on the quality checks above. These are saved as the "level1" dataset.
+
+```{r}
+data <- 
+  data %>% 
+  filter(unique_roi == T, obj_in_frame == T) # we only want the observations that passed our tests.
+
+write_csv(data, here('output/from_diy_data/output_psII_level1.csv'))
+
+```
+
+
+# Plant Area
+
+```{r}
+plantareadF = data %>% 
+  filter(measurement == 'FvFm') %>% 
+  group_by(gtype, treatment, idate,date, parameter, measurement) %>% 
+  summarise(avg = mean(plantarea),
+            stdev = sd(plantarea),
+            sterr = stdev/sqrt(n()))
+
+plantarea_ts =
+  plantareadF %>% 
+  ggplot(aes(x=idate))+
+  geom_ribbon(aes(ymin=avg-sterr, ymax=avg+sterr, group=interaction(gtype,treatment)), fill='grey80')+
+  geom_path(aes(x=idate, y=avg, color=gtype, linetype = treatment),size=1.2)+
+  scale_color_manual(name = 'Genotype', values = gtypeColors, labels = italic_labels(names(gtypeColors)))+
+  scale_linetype_discrete(name = 'Treatment')+
+  # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d')+
+  labs(title = 'Growth Curves',
+       subtitle = 'Shaded region represents +/- 1 standard error',
+       y = bquote('plant area [' * mm^2 *']'))+
+  facet_wrap(~.)+
+  theme_cowplot()+
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1),
+        legend.justification = c(0,1),
+        legend.position = c(0.05,0.96))
+
+# plantarea_ts
+```
+
+```{r}
+plantarea_errors <- 
+  plantareadF %>% 
+  ggplot()+
+  geom_col(aes(x=idate, y=avg, fill=gtype), position=position_dodge2())+
+  geom_errorbar(aes(x=idate, ymin = avg-sterr, ymax=avg+sterr), width=0.9, position=position_dodge2(), color='grey50')+
+  facet_wrap(~treatment)+
+  scale_fill_manual(values = gtypeColors, guide=F)+
+  # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d')+
+  # scale_y_continuous(limits = c(0,250))+
+  theme_cowplot()+
+  theme(axis.text.x = element_text(angle=45, vjust = 1, hjust=1),
+        axis.text.y = element_blank())+
+  labs(title = 'Plant Area',
+       subtitle = 'Error bars represent +/- 1 standard error',
+       y = '')
+```
+
+```{r, fig.height=8}
+plot_grid(plantarea_ts,plantarea_errors)
+```
+
+
+
+# YII
+
+       
+```{r, fig.width=18, fig.height=8}
+yiidF = data %>% 
+  filter(frame %in% c('Fm','Fmp')) %>% 
+  group_by(gtype, treatment, idate, date, parameter, measurement) %>% 
+  summarise(avg = mean(yii_avg),
+            stdev = sd(yii_avg),
+            sterr = stdev/sqrt(n()))
+
+ggplot(yiidF %>% filter(parameter == 'FvFm')) +
+  geom_col(aes(y = avg, x=gtype, fill=treatment), position=position_dodge2())+
+  geom_errorbar(aes(x=gtype, ymin=avg-sterr, ymax=avg+sterr), position=position_dodge2(), color='grey50')+
+  scale_fill_grey()+
+  facet_grid(~date)+
+  labs(title = 'Fv/Fm',
+       subtitle = 'Error bars represent +/- 1 standard error')+
+  theme_cowplot()+
+  theme(axis.text.x = element_text(angle=90, vjust=.4, hjust=1))
+```
+
+
+```{r, fig.height=8}
+fvfm_ts = ggplot(yiidF %>% filter(parameter == 'FvFm'), aes(x=idate)) +
+  geom_ribbon(aes(ymin=avg-sterr, ymax=avg+sterr, group=interaction(gtype,treatment)), fill='grey80')+
+  geom_line(aes(y = avg, color=gtype, linetype=treatment))+
+  labs(title = 'Fv/Fm',
+       subtitle = 'Shaded region represents +/- 1 standard error',
+       y = 'average')+
+  scale_color_manual(values=gtypeColors)+
+    # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d')+ 
+  theme_cowplot()+
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1))
+
+fvfm_ts
+```
+
+```{r, fig.height=10}
+ggplot() + 
+  geom_line(data = yiidF %>% filter(parameter != 'FvFm'), aes(x = parameter, y = avg, group = interaction(treatment, gtype), linetype = treatment, color = gtype), size=1)+
+  facet_wrap(~date)+
+  scale_color_manual(values = gtypeColors)+
+  scale_x_discrete(drop = TRUE)+
+  scale_linetype_discrete(limits=c('control','fluc'))+
+  scale_shape_discrete(limits = c('control','fluc'))+
+  labs(title = 'YII during Induction Curves')+
+  theme_cowplot()+
+  theme(axis.text.x = element_text(angle=90, vjust=.4, hjust=1))
+```
+
+## Steady-state YII
+
+```{r, fig.height=8}
+
+yii_ss = data %>% 
+  filter(frame %in% c('Fm','Fmp'), 
+         parameter %in% levels(parameter)[(nlevels(parameter)-1):nlevels(parameter)]) %>%
+  group_by(gtype, treatment, date, idate) %>% 
+  summarise(avg = mean(yii_avg),#average last two values from Induction Curve
+            stdev = sd(yii_avg),
+            sterr = stdev/sqrt(n()))
+
+ggplot(yii_ss) +
+  geom_col(aes(y = avg, x=gtype, fill=treatment), position=position_dodge2())+
+  geom_errorbar(aes(x=gtype, ymin=avg-sterr, ymax=avg+sterr),position=position_dodge2(), color='grey50', width=0.7)+
+  scale_fill_grey()+
+  facet_grid(~date)+
+  labs(title = 'YII (end of Induction Curve)',
+       subtitle = 'Statistic are averaged from the last two data points on the Induction Curve\nError bars represent +/- 1 standard error',
+       y = 'average')+
+  theme_cowplot()+
+  theme(axis.text.x = element_text(angle=90, vjust=1, hjust=1))
+
+```
+
+```{r, fig.height=8}
+yii_ss_ts <- 
+  ggplot(yii_ss, aes(x=idate)) +
+  geom_ribbon(aes(ymin=avg-sterr, ymax=avg+sterr, group=interaction(gtype,treatment)), fill='grey80')+
+  geom_line(aes(y = avg, color=gtype, linetype=treatment))+
+  labs(title = 'Steady-state YII (end of Induction Curve)',
+       subtitle = 'Average of last two data points on the Induction Curve\nError bars represent +/- 1 standard error',
+       y = 'average')+
+  scale_color_manual(values=gtypeColors)+
+    # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d')+
+  theme_cowplot()+
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1))
+
+yii_ss_ts
+```
+
+# NPQ
+
+```{r, fig.height=10}
+npqdF = data %>% 
+  filter(frame %in% c('Fm','Fmp')) %>% 
+  group_by(gtype, treatment, idate, date, parameter, measurement) %>% 
+  summarise(avg = mean(npq_avg),
+            stdev = sd(npq_avg))
+
+
+ggplot() + 
+  geom_line(data = npqdF %>% filter(parameter != 'FvFm'), aes(x = parameter, y = avg, group = interaction(treatment,gtype), linetype = treatment, color = gtype), size=1)+
+  facet_wrap(~date)+
+    scale_color_manual(values = gtypeColors)+
+  scale_x_discrete(drop = TRUE)+
+  scale_linetype_discrete(limits=c('control','fluc'))+
+  scale_shape_discrete(limits = c('control','fluc'))+
+  labs(title = 'NPQ during Induction Curves')+
+  theme_cowplot()+
+  theme(axis.text.x = element_text(angle=90, vjust=1, hjust=1))
+```
+
+## Steady-state NPQ
+
+```{r, fig.height=8}
+npq_ss = data %>% 
+  filter(frame %in% c('Fm','Fmp'), parameter %in% levels(parameter)[(nlevels(parameter)-1):nlevels(parameter)]) %>% 
+  group_by(gtype, treatment, idate, date) %>% 
+  summarise(avg = mean(npq_avg),
+            stdev = sd(npq_avg),
+            sterr = stdev/sqrt(n()))
+
+ggplot(npq_ss) +
+  geom_col(aes(y = avg, x=gtype, fill=treatment), position=position_dodge2())+
+  geom_errorbar(aes(x=gtype, ymin=avg-sterr, ymax=avg+sterr),position=position_dodge2(), color='grey50', width=0.7)+
+  scale_fill_grey()+
+  facet_grid(~date)+
+  labs(title = 'NPQ (end of Induction Curve)',
+       subtitle = 'Statistic are averaged from the last two data points on the Induction Curve\nError bars represent +/- 1 standard error',
+       y = 'average')+
+  theme_cowplot()+
+  theme(axis.text.x = element_text(angle=90, vjust=1, hjust=1))
+
+```
+```{r, fig.height=8}
+npq_ss_ts <- 
+  ggplot(npq_ss, aes(x=idate)) +
+  geom_ribbon(aes(ymin=avg-sterr, ymax=avg+sterr, group=interaction(gtype,treatment)), fill='grey80')+
+  geom_line(aes(y = avg, color=gtype, linetype=treatment))+
+  labs(title = 'Steady-state NPQ (end of Induction Curve)',
+       subtitle = 'Average of last two data points on the Induction Curve\nError bars represent +/- 1 standard error',
+       y = 'average')+
+  scale_color_manual(values=gtypeColors)+
+    # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d')+
+  theme_cowplot()+
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1))
+
+npq_ss_ts
+
+```
+
+
+# Treatment Effects
+
+## How does each genotype respond to the treatment compared to control (steady light) conditions?
+
+### Plant Area
+```{r}
+plantarea_controlavg <- 
+  plantareadF %>% 
+  ungroup %>% 
+  select(idate, date,treatment, gtype, baseavg = avg, basesd=stdev)
+
+chgdF = full_join(plantareadF %>% filter(treatment == 'fluc'), 
+                  plantarea_controlavg %>% filter(treatment == 'control') %>% select(-treatment), 
+                  by=c('idate','date','gtype')) %>% 
+  mutate(chg = avg-baseavg)
+
+
+
+```
+
+
+```{r, fig.height=4, fig.width=8}
+colorlimits_plantarea = max(abs(range(chgdF %>% pull(chg), na.rm=T)))
+
+plantarea_raster_treatment <- 
+  ggplot(chgdF, aes(x=idate))+
+  geom_raster(aes(y=gtype,fill=chg))+
+  # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d', expand=c(0,0))+
+    scale_y_discrete(limits = rev(levels(chgdF$gtype)),
+                   labels = italic_labels(rev(levels(chgdF$gtype))),
+                   expand=c(0,0), 
+                   drop=T)+
+  scale_fill_scico(name = 'Deviation\n(Modulus power 2)',
+                   palette = 'tofino', 
+                   limits = c(-colorlimits_plantarea, colorlimits_plantarea)*1.3, 
+                   oob = scales::squish, 
+                   trans = scales::modulus_trans(p=2))+ 
+  theme_bw()+
+  theme(axis.text.x = element_text(angle=45, hjust=1))+
+  labs(title="Treatment effects on plant area compared to treatment control",
+       subtitle = "Positive values indicate an increase under fluctuating light conditions")
+
+plantarea_raster_treatment
+
+```
+
+
+### YII
+
+```{r, include = F}
+yii_controlavg = yiidF %>%
+  ungroup %>% 
+  select(idate,date,treatment, parameter, gtype, baseavg = avg, basesd=stdev)
+
+chgdF = full_join(yiidF %>% filter(treatment == 'fluc'), 
+                  yii_controlavg %>% filter(treatment == 'control')%>% select(-treatment), 
+                  by=c('idate','date','parameter','gtype')) %>% 
+  mutate(chg = avg-baseavg)
+
+```
+
+```{r}
+fvfmchg = data %>% 
+  select(sampleid, treatment, roi, idate, date, gtype, parameter, yii_avg) %>% 
+  filter(parameter == 'FvFm') %>% 
+  full_join(yii_controlavg %>% filter(treatment=='control', parameter == 'FvFm') %>% select(-treatment)) %>% 
+  mutate(chg = yii_avg - baseavg)
+         # chg = ifelse(abs(chg) < basesd,NA,chg))
+
+colorlimits = max(abs(range(fvfmchg$chg, na.rm=T)))
+
+segloc <- 
+  fvfmchg %>%
+  mutate(x = min(date),
+         xend = max(date)) %>% 
+  distinct(gtype, sampleid,roi, x,xend) %>% 
+  arrange(gtype, sampleid, roi) %>% 
+  mutate(lag = lag(gtype),
+         loc = ifelse(lag!=gtype,row_number(),NA) ) %>% 
+  drop_na() 
+
+
+ggplot(fvfmchg %>% arrange(sampleid, roi), aes(x=idate))+
+  geom_raster(aes(y= interaction(gtype, treatment, sampleid, roi, lex.order = T, sep=':'), fill=chg))+
+  geom_hline(data = segloc, aes(yintercept =  loc-0.5))+
+  # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d', expand=c(0,0))+
+  # scale_fill_scico(palette = 'broc', limits=c(-colorlimits, colorlimits), oob = scales::squish, direction=1)+
+  scale_fill_distiller(palette = 'PuOr',limits=c(-colorlimits, colorlimits), oob = scales::squish)+
+  theme_bw()+
+  theme(axis.text.x = element_text(angle=45, hjust=1))+
+  labs(title="Fv/Fm: Treatment effect compared to treatment control",
+       subtitle = 'mean control phenotype for each genotype from each day substracted from daily measurement',
+       y = 'replication id')
+
+```
+
+```{r, fig.height=4, fig.width=8}
+
+colorlimits_fvfm = max(abs(range(chgdF %>% filter(parameter=='FvFm') %>% pull(chg), na.rm=T)))
+
+fvfm_raster_treatment <- 
+  ggplot(chgdF %>% filter(parameter=='FvFm'), aes(x=idate))+
+  geom_raster(aes(y=gtype,fill=chg))+
+  # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d', expand=c(0,0))+
+  scale_y_discrete(limits = rev(levels(chgdF$gtype)),
+                   labels = italic_labels(rev(levels(chgdF$gtype))),
+                    expand = expand_scale(0,0))+
+  scale_fill_scico(name = 'Deviation\n(Modulus base 10)', 
+                   palette = 'lisbon', 
+                   limits=c(-colorlimits_fvfm, colorlimits_fvfm)*1.5, 
+                   oob = scales::squish,
+                   trans = scales::modulus_trans(p=10))+
+  theme_bw()+
+  theme(axis.text.x = element_text(angle=45, hjust=1))+
+  labs(title="Treatment effects on Fv/Fm compared to treatment control",
+       subtitle = "Positive values indicate an increase under fluctuating light conditions")
+
+fvfm_raster_treatment
+```
+
+
+
+```{r, fig.height = 12}
+ggplot(chgdF %>% filter(parameter != 'FvFm'), aes(x = idate))+
+  geom_line(aes( y = chg, color=gtype, group=gtype))+
+  facet_wrap(~parameter)+
+    scale_color_manual(values = gtypeColors)+
+  # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d')+
+labs(title = 'Treatment effects based on the Induction Curve',
+       subtitle = 'Positive values indicate an increase under fluctuating light conditions')+
+  theme_cowplot()+
+  theme(axis.text.x = element_text(angle=90, vjust=.5, hjust=1))
+```
+
+```{r, fig.height = 10}
+ggplot() + 
+  geom_line(data = chgdF %>% filter(parameter != 'FvFm'), aes(x = parameter, y = chg, group = gtype,  color = gtype))+
+  facet_wrap(~date)+
+  scale_color_manual(values = gtypeColors)+
+  scale_x_discrete(drop = TRUE)+
+  scale_linetype_discrete(limits=c('control','fluc'))+
+  scale_shape_discrete(limits = c('control','fluc'))+
+  labs(title = 'Treatment effects based on the Induction Curve',
+       subtitle = 'Positive values indicate an increase under fluctuating light conditions')+
+  theme_cowplot()+
+  theme(axis.text.x = element_text(angle=90, vjust=.5, hjust=1))
+```
+
+#### Steady-state YII
+
+
+```{r, fig.height=4, fig.width=8}
+
+controlavg = yii_ss %>%
+  ungroup %>% 
+  filter(treatment=='control') %>% 
+  select(idate, date, gtype, baseavg = avg, basesd = stdev)
+
+chgdF = full_join(yii_ss %>% filter(treatment == 'fluc'), 
+                  controlavg) %>% 
+        mutate(chg = avg-baseavg)
+
+
+colorlimits = max(abs(range(chgdF$chg, na.rm=T)))
+
+yii_ss_raster_treatment <- 
+  ggplot(chgdF, aes(x=idate))+
+  geom_raster(aes(y=gtype,fill=chg))+
+  # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d', expand=c(0,0))+
+    scale_y_discrete(limits = rev(levels(chgdF$gtype)),
+                   labels = italic_labels(rev(levels(chgdF$gtype))),
+                      expand=c(0,0))+
+    scale_fill_scico(name = 'Deviation\n(Modulus base 10)', 
+                   palette = 'lisbon', 
+                   limits=c(-colorlimits, colorlimits)*1.2, 
+                   oob = scales::squish,
+                   trans = scales::modulus_trans(p=10))+
+  theme_bw()+
+  theme(axis.text.x = element_text(angle=45, hjust=1))+
+  labs(title="Treatment effects on steady-state YII compared treatment control",
+       subtitle = "Positive values indicate an increase under fluctuating light conditions.")
+
+yii_ss_raster_treatment
+
+colorlimits_ssyii <- colorlimits
+
+```
+
+
+### NPQ
+
+```{r, fig.width = 16}
+npq_controlavg = npqdF %>%
+  ungroup %>% 
+  select(idate, date,treatment, parameter, gtype, baseavg = avg, basesd=stdev)
+
+chgdF = full_join(npqdF %>% filter(treatment == 'fluc'), 
+                  npq_controlavg %>% filter(treatment == 'control')%>% select(-treatment), 
+                  by=c('idate','date','parameter','gtype')) %>% 
+  mutate(chg = avg-baseavg) %>% 
+  filter(parameter != 'FvFm')
+```
+
+```{r, fig.height=12}
+ggplot(chgdF, aes(x=idate))+
+  geom_line(aes(y = chg, color=gtype, group=gtype))+
+  facet_wrap(~parameter)+
+    scale_color_manual(values = gtypeColors)+
+  # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d')+
+labs(title = 'Treatment effects on NPQ based on Induction Curve',
+       subtitle = 'Positive values indicate an increase under fluctuating light conditions')+
+  theme_cowplot()+
+  theme(axis.text.x = element_text(angle=90, vjust=.4, hjust=1))
+
+```
+
+```{r, fig.height=10}
+ggplot() + 
+  geom_line(data = chgdF , aes(x = parameter, y = chg, group = gtype,  color = gtype))+
+  facet_wrap(~date)+
+  scale_color_manual(values = gtypeColors)+
+  scale_x_discrete(drop = TRUE)+
+  scale_linetype_discrete(limits=c('control','fluc'))+
+  scale_shape_discrete(limits = c('control','fluc'))+
+  labs(title = 'Difference in NPQ between fluctuating and steady light',
+       subtitle = 'Positive values indicates increased NPQ with fluctuating light')+
+  theme_cowplot()+
+  theme(axis.text.x = element_text(angle=90, vjust=.4, hjust=1))
+```
+
+#### Steady-state NPQ
+
+```{r, fig.height=4, fig.width=8}
+
+controlavg = npq_ss %>%
+  ungroup %>% 
+  filter(treatment == 'control') %>% 
+  select(idate,date, gtype, baseavg = avg, basesd = stdev)
+
+chgdF = full_join(npq_ss %>% filter(treatment == 'fluc'), 
+                  controlavg) %>% 
+  mutate(chg = avg-baseavg)
+
+
+colorlimits = max(abs(range(chgdF$chg, na.rm=T)))
+
+npq_ss_raster_treatment <- 
+  ggplot(chgdF, aes(x=idate))+
+  geom_raster(aes(y=gtype,fill=chg))+
+  # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d', expand=c(0,0))+
+    scale_y_discrete(limits = rev(levels(chgdF$gtype)),
+                   labels = italic_labels(rev(levels(chgdF$gtype))),
+                                      expand=c(0,0))+
+    scale_fill_scico(name = 'Deviation\n(Modulus power 6)', 
+                   palette = 'berlin', 
+                   limits=c(-colorlimits, colorlimits), 
+                   oob = scales::squish,
+                   trans = scales::modulus_trans(p=6))+
+  theme_bw()+
+  theme(axis.text.x = element_text(angle=45, hjust=1))+
+  labs(title="Treatment effects on steady-state NPQ compared to treatment control",
+       subtitle = "Positive values indicate an increase under fluctuating light conditions.")
+
+npq_ss_raster_treatment
+
+colorlimits_ssnpq <- colorlimits
+```
+
+## How does each mutant respond to the treatment compared to WT?
+
+### Plant Area
+```{r}
+plantarea_WTavg = plantareadF %>%
+  ungroup %>% 
+  filter(gtype=='WT') %>% 
+  select(idate, date, treatment, -gtype, baseavg = avg, basesd=stdev)
+
+chgdF = full_join(plantareadF, 
+                  plantarea_WTavg, 
+                  by=c('idate','date','treatment')) %>% 
+  mutate(chg = avg-baseavg) %>% 
+  filter(gtype!='WT')
+
+
+```
+
+```{r, fig.height=4, fig.width=8}
+
+colorlimits_plantarea = max(colorlimits_plantarea, max(abs(range(chgdF$chg, na.rm=T))))
+
+plantarea_raster_wt <- 
+  ggplot(chgdF, aes(x=idate))+
+  geom_raster(aes(y=interaction(treatment,gtype),fill=chg))+
+  # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d', expand=c(0,0))+
+  scale_y_discrete(limits = rev(levels(fct_drop(interaction(chgdF$treatment, chgdF$gtype)))),
+                   labels = italic_labels(rev(levels(fct_drop(interaction(chgdF$treatment, chgdF$gtype))))),
+                   expand=c(0,0),
+                   drop=T)+
+    scale_fill_scico(name = 'Deviation\n(Modulus power 2)', 
+                   palette = 'tofino', 
+                   limits=c(-colorlimits_plantarea, colorlimits_plantarea)*1.3, 
+                   oob = scales::squish,
+                   trans = scales::modulus_trans(p=2))+
+  theme_bw()+
+  theme(axis.text.x = element_text(angle=45, hjust=1))+
+ labs(title="Treatment effects on plant area compared to WT",
+       subtitle = "Positive values indicate an increase compared to WT")
+
+plantarea_raster_wt
+```
+
+
+
+### YII
+
+```{r}
+yii_WTavg = yiidF %>%
+  ungroup %>% 
+  filter(gtype=='WT') %>% 
+  select(idate, date, treatment, parameter, -gtype, baseavg = avg, basesd=stdev)
+
+chgdF = full_join(yiidF , 
+                  yii_WTavg, 
+                  by=c('idate','date','parameter','treatment')) %>% 
+  mutate(chg = avg-baseavg) %>% 
+  filter(gtype!='WT')
+```
+
+```{r}
+fvfmchg = data %>% 
+  select(sampleid, treatment, roi, idate, date, gtype, parameter, yii_avg) %>% 
+  filter(parameter == 'FvFm') %>% 
+  full_join(yii_WTavg %>% filter(parameter == 'FvFm')) %>% 
+  mutate(chg = yii_avg - baseavg)
+         # chg = ifelse(abs(chg) < basesd,NA,chg))
+
+colorlimits = max(abs(range(fvfmchg$chg, na.rm=T)))
+
+segloc <- 
+  fvfmchg %>%
+  mutate(x = min(date),
+         xend = max(date)) %>% 
+  distinct(gtype, sampleid,roi, x,xend) %>% 
+  arrange(gtype, sampleid, roi) %>% 
+  mutate(lag = lag(gtype),
+         loc = ifelse(lag!=gtype,row_number(),NA) ) %>% 
+  drop_na() 
+
+
+ggplot(fvfmchg %>% arrange(sampleid, roi), aes(x=idate))+
+  geom_raster(aes(y= interaction(gtype, treatment, sampleid, roi, lex.order = T, sep=':'), fill=chg))+
+  geom_hline(data = segloc, aes(yintercept =  loc-0.5))+
+  # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d', expand=c(0,0))+
+  # scale_y_discrete(limits=rev(interaction(fvfmchg$gtype, fvfmchg$treatment, fvfmchg$sampleid, fvfmchg$roi, lex.order = T, sep=':')))+ #this doesn't work
+  # scale_fill_scico(palette = 'broc', limits=c(-colorlimits, colorlimits), oob = scales::squish, direction=1)+
+  scale_fill_distiller(palette = 'PuOr',limits=c(-colorlimits, colorlimits), oob = scales::squish)+
+  theme_bw()+
+  theme(axis.text.x = element_text(angle=45, hjust=1))+
+  labs(title="Fv/Fm: Treatment effect compared to WT",
+       subtitle = 'mean WT phenotype for each treatment from each day substracted from daily measurement',
+       y = 'replication id')
+
+```
+
+```{r, fig.height=4, fig.width=8}
+colorlimits_fvfm = max(colorlimits_fvfm, max(abs(range(chgdF %>% filter(parameter=='FvFm') %>% pull(chg), na.rm=T))))
+
+fvfm_raster_wt <- 
+  ggplot(chgdF %>% filter(parameter=='FvFm'), aes(x=idate))+
+  geom_raster(aes(y=interaction(treatment, gtype),fill=chg))+
+  # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d', expand=c(0,0))+
+  scale_y_discrete(limits = rev(levels(fct_drop(interaction(chgdF$treatment, chgdF$gtype)))),
+                   labels = italic_labels(rev(levels(fct_drop(interaction(chgdF$treatment, chgdF$gtype))))),
+                   expand=c(0,0))+
+scale_fill_scico(name = 'Deviation\n(Modulus power 10)', 
+                   palette = 'lisbon', 
+                   limits=c(-colorlimits_fvfm, colorlimits_fvfm)*1.5, 
+                   oob = scales::squish,
+                   trans = scales::modulus_trans(p=10))+
+  theme_bw()+
+  theme(axis.text.x = element_text(angle=45, hjust=1))+
+  labs(title="Treatment effects on Fv/Fm compared to WT",
+       subtitle = "Positive values indicate an increase compared to WT")
+
+fvfm_raster_wt
+```
+
+```{r, fig.height = 12 }
+ggplot(chgdF %>% filter(parameter != 'FvFm'), aes(x=idate))+
+  geom_line(aes(y = chg, color=gtype, linetype = treatment))+
+  facet_wrap(~parameter)+
+  # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d')+
+  scale_color_manual(values = gtypeColors)+
+  labs(title = 'Treatment effects based on the Induction Curve',
+       subtitle = 'Positive values indicate an increase compared to WT')+
+  theme_cowplot()+
+  theme(axis.text.x = element_text(angle=90, vjust=.5, hjust=1))
+```
+
+```{r, fig.height = 10}
+ggplot() + 
+  geom_line(data = chgdF %>% filter(parameter != 'FvFm'), aes(x = parameter, y = chg, linetype=treatment,  color = gtype, group=interaction(gtype,treatment)))+
+  facet_wrap(~date)+
+  scale_color_manual(values = gtypeColors)+
+  scale_x_discrete(drop = TRUE)+
+  scale_linetype_discrete(limits=c('control','fluc'))+
+  scale_shape_discrete(limits = c('control','fluc'))+
+  labs(title = 'Treatment effects based on the Induction Curve',
+       subtitle = 'Positive values indicate an increase compared to WT')+
+  theme_cowplot()+
+  theme(axis.text.x = element_text(angle=90, vjust=.5, hjust=1))
+```
+
+#### Steady-state YII
+
+
+```{r, fig.height=4, fig.width=8}
+
+WTavg = yii_ss %>%
+  ungroup %>% 
+  filter(gtype=='WT') %>% 
+  select(date, treatment, baseavg = avg, basesd = stdev)
+
+chgdF = full_join(yii_ss, 
+                  WTavg, by=c('date','treatment')) %>% 
+  mutate(chg = avg-baseavg) %>% 
+  filter(gtype!='WT')
+
+
+colorlimits = max(abs(range(chgdF$chg, na.rm=T)))
+yii_ss_raster_wt <- 
+  ggplot(chgdF, aes(x=idate))+
+  geom_raster(aes(y=interaction(treatment,gtype),fill=chg))+
+  # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d', expand=c(0,0))+
+  scale_y_discrete(limits = rev(levels(fct_drop(interaction(chgdF$treatment, chgdF$gtype)))),
+                   labels = italic_labels(rev(levels(fct_drop(interaction(chgdF$treatment, chgdF$gtype))))),
+                    expand=c(0,0))+
+scale_fill_scico(name = 'Deviation\n(Modulus power 10)', 
+                   palette = 'lisbon', 
+                   limits=c(-colorlimits, colorlimits)*1.2,
+                   oob = scales::squish,
+                   trans = scales::modulus_trans(p=10))+  theme_bw()+
+  theme(axis.text.x = element_text(angle=45, hjust=1))+
+  labs(title="Treatment effects on steady-state YII compared to WT",
+       subtitle = 'Positive values indicate an increase compared to WT')
+
+yii_ss_raster_wt
+colorlimits_ssyii = max(colorlimits, colorlimits_ssyii)
+```
+
+
+### NPQ
+
+```{r}
+npq_WTavg = npqdF %>%
+  ungroup %>% 
+  filter(gtype == 'WT') %>% 
+  select(idate, date, treatment, parameter, -gtype, baseavg = avg, basesd = stdev)
+
+chgdF = full_join(npqdF, 
+                  npq_WTavg, 
+                  by=c('idate','date','parameter','treatment')) %>% 
+  mutate(chg = avg-baseavg) %>% 
+  filter(parameter != 'FvFm')
+```
+
+```{r, fig.height = 12}
+ggplot(chgdF, aes(x=idate))+
+  geom_line(aes(y = chg, color = gtype, linetype = treatment))+
+  facet_wrap(~parameter)+
+  # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d')+
+  scale_color_manual(values = gtypeColors)+
+  labs(title = 'Treatment effects based on the Induction Curve',
+       subtitle = 'Positive values indicate an increase compared to WT')+
+  theme_cowplot()+
+  theme(axis.text.x = element_text(angle=90, vjust=.5, hjust=1))
+```
+
+```{r, fig.height = 10}
+ggplot() + 
+  geom_line(data = chgdF, aes(x = parameter, y = chg, linetype=treatment,  color = gtype, group=interaction(gtype,treatment)))+
+  facet_wrap(~date)+
+  scale_color_manual(values = gtypeColors)+
+  scale_x_discrete(drop = TRUE)+
+  scale_linetype_discrete(limits=c('control','fluc'))+
+  scale_shape_discrete(limits = c('control','fluc'))+
+  labs(title = 'Treatment effects based on the Induction Curve',
+       subtitle = 'Positive values indicate an increase compared to WT')+
+  theme_cowplot()+
+  theme(axis.text.x = element_text(angle=90, vjust=.5, hjust=1))
+```
+
+#### Steady-state NPQ
+
+```{r, fig.height=4, fig.width=8}
+WTavg = npq_ss %>%
+  ungroup %>% 
+  filter(gtype=='WT') %>% 
+  select(idate, date, treatment, baseavg = avg, basesd = stdev)
+
+chgdF = full_join(npq_ss, 
+                  WTavg, 
+                  by=c('idate','date','treatment')) %>% 
+  mutate(chg = avg-baseavg) %>% 
+  filter(gtype!='WT')
+
+
+colorlimits = max(abs(range(chgdF$chg, na.rm=T)))
+
+npq_ss_raster_wt <- 
+  ggplot(chgdF, aes(x=idate))+
+  geom_raster(aes(y=interaction(treatment,gtype),fill=chg))+
+  # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d', expand=c(0,0))+
+  scale_y_discrete(drop=T,
+                   limits=rev(levels(fct_drop(interaction(chgdF$treatment,chgdF$gtype)))),
+                   labels=italic_labels(rev(levels(fct_drop(interaction(chgdF$treatment,chgdF$gtype))))),
+                   expand=c(0,0))+
+scale_fill_scico(name = 'Deviation\n(Modulus power 6)', 
+                   palette = 'berlin', 
+                   limits=c(-colorlimits, colorlimits)*1.2, 
+                   oob = scales::squish,
+                   trans = scales::modulus_trans(p=6))+  theme_bw()+
+  theme(axis.text.x = element_text(angle=45, hjust=1))+
+  labs(title="Treatment effects on steady-state NPQ compared to WT",
+       subtitle = 'Positive values indicate an increase compared to WT')
+
+npq_ss_raster_wt
+
+colorlimits_ssnpq = max(colorlimits_ssnpq, colorlimits)
+```
+
+
+
+# Compilation for Manuscript
+
+```{r, include=T, fig.width=20, fig.height=15}
+
+col1 = plot_grid(
+  plantarea_ts+
+     facet_null()+
+    theme_cowplot(font_size=10)+
+     theme(legend.just = c(0,1),
+           legend.position = c(0.05,0.95),
+           legend.spacing = unit(0,'npc'),
+           axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5),
+           plot.title = element_text(face='plain', size=14))+
+     scale_x_continuous(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0.5)),
+  fvfm_ts +
+      guides(color=FALSE, linetype=F) + 
+        theme_cowplot(font_size=10)+
+      theme(axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5),
+            plot.title = element_text(face='plain', size=14))+
+      scale_x_continuous(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0.5)),
+  yii_ss_ts + 
+    guides(color=FALSE, linetype=F) + 
+        theme_cowplot(font_size=10)+
+    theme(axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5),
+                 plot.title = element_text(face='plain', size=14))+
+    scale_x_continuous(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0.5)),
+  npq_ss_ts +
+    guides(color=FALSE, linetype=F) + 
+        theme_cowplot(font_size=10)+
+    theme(axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5),
+         plot.title = element_text(face='plain', size=14))+
+    scale_x_continuous(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0.5)),
+  ncol=1, 
+  align = 'hv',
+  labels = LETTERS[c(2,5,8,11)],
+  label_size = 30,
+    label_fontface = 'plain'
+)
+
+col2 = plot_grid(
+  plantarea_raster_treatment+
+     guides(fill=F)+
+     theme(axis.title.y = element_blank(),
+           axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5))+
+     scale_fill_scico(name = 'Deviation\n(Modulus power 2)', 
+           palette = 'tofino', 
+           limits=c(-colorlimits_plantarea, colorlimits_plantarea)*1.3, 
+           oob = scales::squish,
+           trans = scales::modulus_trans(p=2))+
+     scale_x_continuous(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
+   fvfm_raster_treatment+
+     guides(fill=F)+
+     scale_fill_scico(name = 'Deviation\n(Modulus base 10)', 
+                      palette = 'lisbon', 
+                      limits=c(-colorlimits_fvfm, colorlimits_fvfm)*1.5, 
+                      oob = scales::squish,
+                      trans = scales::modulus_trans(p=10))+
+     theme(axis.title.y = element_blank(),
+           axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5))+
+     scale_x_continuous(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
+   yii_ss_raster_treatment+guides(fill=F)+
+     theme(axis.title.y = element_blank(),
+           axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5))+
+     scale_fill_scico(name = 'Deviation\n(Modulus base 10)', 
+         palette = 'lisbon', 
+         limits=c(-colorlimits_ssyii, colorlimits_ssyii)*1.2, 
+         oob = scales::squish,
+         trans = scales::modulus_trans(p=10))+
+     scale_x_continuous(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
+   npq_ss_raster_treatment+guides(fill=F)+
+     theme(axis.title.y = element_blank(),
+           axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5))+
+     scale_fill_scico(name = 'Deviation\n(Modulus power 6)', 
+         palette = 'berlin', 
+         limits=c(-colorlimits_ssnpq, colorlimits_ssnpq)*1.1, 
+         oob = scales::squish,
+         trans = scales::modulus_trans(p=6))+
+     scale_x_continuous(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
+  ncol=1, 
+  align = 'hv',
+  labels = LETTERS[c(3,6,9,12)],
+  label_size = 30,
+  label_fontface = 'plain',
+  hjust = 0)
+
+col3 = plot_grid(
+  plantarea_raster_wt+
+     theme(legend.position = 'right', 
+           legend.direction = 'vertical',
+           legend.box = 'vertical',
+           legend.box.just = 'left',
+           legend.spacing = unit(0,'npc'),
+           axis.title.y = element_blank(),
+           axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5))+
+     scale_fill_scico(name = 'Deviation\n(Modulus power 2)', 
+           palette = 'tofino', 
+           limits=c(-colorlimits_plantarea, colorlimits_plantarea)*1.3, 
+           oob = scales::squish,
+           trans = scales::modulus_trans(p=2))+
+     scale_x_continuous(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
+   fvfm_raster_wt+
+     theme(legend.position = 'right', 
+           legend.direction = 'vertical',
+           legend.box = 'vertical',
+           legend.box.just = 'left',
+           legend.spacing = unit(0,'npc'),
+           axis.title.y = element_blank(),
+           axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5))+
+     scale_fill_scico(name = 'Deviation\n(Modulus base 10)', 
+           palette = 'lisbon', 
+           limits=c(-colorlimits_fvfm, colorlimits_fvfm)*1.5, 
+           oob = scales::squish,
+           trans = scales::modulus_trans(p=10))+
+     scale_x_continuous(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
+   yii_ss_raster_wt+
+     theme(legend.position = 'right', 
+           legend.direction = 'vertical',
+           legend.box = 'vertical',
+           legend.box.just = 'left',
+           legend.spacing = unit(0,'npc'),
+           axis.title.y = element_blank(),
+           axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5))+
+     scale_fill_scico(name = 'Deviation\n(Modulus base 10)', 
+           palette = 'lisbon', 
+           limits=c(-colorlimits_ssyii, colorlimits_ssyii)*1.2, 
+           oob = scales::squish,
+           trans = scales::modulus_trans(p=10))+
+     scale_x_continuous(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
+   npq_ss_raster_wt+
+     theme(legend.position = 'right', 
+           legend.direction = 'vertical',
+           legend.box = 'vertical',
+           legend.box.just = 'left',
+           legend.spacing = unit(0,'npc'),
+           axis.title.y = element_blank(),
+           axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5))+
+     scale_fill_scico(name = 'Deviation\n(Modulus power 6)', 
+           palette = 'berlin', 
+           limits=c(-colorlimits_ssnpq, colorlimits_ssnpq)*1.1, 
+           oob = scales::squish,
+           trans = scales::modulus_trans(p=6))+
+     scale_x_continuous(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
+    ncol=1,
+    align = 'hv',
+    labels = LETTERS[c(4,7,10,13)],
+    label_size = 30,
+    label_fontface = 'plain')
+
+
+compfig = plot_grid(col1,col2,col3, rel_widths = c(1,1,1.25), ncol=3, axis='b')
+compfig
+cowplot::save_plot(figdir,'manuscript_fig7.pdf'),compfig, nrow=4, ncol=3, base_width=7, limitsize=F)
+```
+
+
+
