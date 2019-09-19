@@ -33,6 +33,9 @@ __pycache__/
 dask*/
 .Rproj.user
 
+*data/
+!diy_data/
+
 # debug folder
 #debug/
 
