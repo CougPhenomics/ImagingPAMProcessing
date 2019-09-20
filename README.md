@@ -1,7 +1,7 @@
 # Phenomics Workflow for Processing Images from Walz Imaging-PAM
 This directory contains the scripts that accompany the manuscript: 
 
-*Cost effective dynamic light experiments using Do-it-Yourself plant growth racks and upgrades to the Walz Imaging-PAM enabling semi-automated high-throughput image segmentation*
+*Dynamic light experiments and semi-automated phenotyping enabled by self-built plant growth racks and simple upgrades to the Walz Imaging-PAM*
 
 by Dominik Schneider, Laura S. Lopez, Meng Li, Joseph D. Crawford, David M. Savage, and Hans-Henning Kunz
 
@@ -19,7 +19,7 @@ To install R, download [R from CRAN](https://www.r-project.org/) and then instal
 
 Lastly, download this repository as a .zip file (see green "Clone or download" button) and extract it to your computer.
 
-### Configure Image files
+### Organize Image files
 You need to export your .pim files to multiframe .tifs, either using the ImagingWin dialog (Export button lower left, then select .tif) or as the final step in your custom Walz script, and then drop them in `diy_data/raw_multiframe`. We suggest setting up a new data directory for your own project, in which case you would have `new_data/raw_multiframe`.
 
 Each tif file should be labeled with exactly 2 dashes, 2 descriptors, and a date: e.g. control-20190501-tray2.tif. It is assumed the first descriptor is the treatment, the second descriptor is a sample ID number, and the date is in the format YYYYMMDD.
@@ -68,7 +68,7 @@ See `diy_data/` for the dataset used in the manuscript.
 At the very least, you will need need to modify [`scripts/psII.py`](scripts/psII.py) in 1 place:
 1. you must change `indir` to point to your data directory.
 
-It is also likely you will need to modify the location of the ROI to indicate where the plants are in the image. Even if you are using the 9 plant arrangement using the sample crate and 9 pot holders described in the text, it is likely your working distance will be slighlty different and therefore your plant positions will be different relative to the image frame. In this case you must change the location of your ROI's as prescibed with `pcv.roi.multi()` in `scripts/psII.py`. See [plantcv documentation](https://plantcv.readthedocs.io/en/stable/roi_multi/) for details. You can test your ROI arrangement by stepping through the analysis with a single image.
+It is also likely you will need to modify the location of the ROI to indicate where the plants are in the image. Even if you are using the 9 plant arrangement using the sample crate and 9 pot holders described in the text, it is likely your working distance will be slightly different and therefore your plant positions will be different relative to the image frame. In this case you must change the location of your ROI's as prescibed with `pcv.roi.multi()` in `scripts/psII.py`. See [plantcv documentation](https://plantcv.readthedocs.io/en/stable/roi_multi/) for details. You can test your ROI arrangement by stepping through the analysis with a single image.
 
 To run the pipeline, make sure your plantcv python environment is in your path. Open the project directory (this repository that you extracted from the zip) in a terminal/cmd window that includes your conda environment (note the (plantcv) on the left):
 
