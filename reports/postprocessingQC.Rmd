@@ -25,8 +25,8 @@ library(scico)
 
 ```{r setup_plotdir}
 datadir = here('output','from_diy_data')
-figdir = here(datadir,'figs')
-dir.create(figdir, rec=T)
+figdir = file.path(datadir,'figs')
+dir.create(figdir, rec=T, showWarnings = F)
 ```
 
 # Read data from image analysis
@@ -43,8 +43,7 @@ data = read_csv(file.path(datadir,'output_psII_level0.csv'), #reading the data f
          gtype = fct_relevel(toupper(gtype),'WT',after=0), #putting WT to the front of the list so we can color it black always
          measurement = case_when(parameter == 'FvFm' ~ 'FvFm', #this will help group the different PSII parameters between Fv/Fm and Induction Curve
                                  TRUE ~ 'IndC'),
-         parameter = as_factor(parameter),
-         plantarea = plantarea * 3.0625) # we should reprocess the images. original resolution guess was 0.2 mm/pixel. Measured res was 0.35. This is 3.0625 times more area per square pixel. remove this if psII.py is rerun with the right pixel resolution.
+         parameter = as_factor(parameter))
 ```
 
 ```{r gtypeColors, include=F}
@@ -1008,7 +1007,7 @@ col3 = plot_grid(
 
 compfig = plot_grid(col1,col2,col3, rel_widths = c(1,1,1.25), ncol=3, axis='b')
 compfig
-cowplot::save_plot(figdir,'manuscript_fig7.pdf'),compfig, nrow=4, ncol=3, base_width=7, limitsize=F)
+cowplot::save_plot(file.path(figdir,'manuscript_fig7.pdf'),compfig, nrow=4, ncol=3, base_width=7, limitsize=F)
 ```
 
 
