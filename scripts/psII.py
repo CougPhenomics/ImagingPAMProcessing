@@ -19,6 +19,7 @@ warnings.filterwarnings("ignore", module='plotnine')
 from src.data import import_snapshots
 from src.segmentation import createmasks
 from src.util import masked_stats
+from src.util import strip_whitespace
 from src.viz import add_scalebar, custom_colormaps
 # %% io directories
 indir = 'diy_data'
@@ -37,11 +38,12 @@ pixelresolution = 0.35
 
 # %% Import tif files
 # importlib.reload(import_snapshots)
-fdf = import_snapshots.import_snapshots(indir, 'psii')
+fdf = import_snapshots.import_snapshots(indir, 'psii', extract_frames=True)
 
 # %% Define the frames from the PSII measurements
 pimframes = pd.read_csv(os.path.join(
     indir, 'pimframes_map.csv'), skipinitialspace=True)
+pimframes = strip_whitespace.strip_dfwhitespace(pimframes)
 fdf_dark = (pd.merge(fdf.reset_index(),
                      pimframes,
                      on=['imageid'],
@@ -248,7 +250,7 @@ def image_avg(fundf):
     npq_img = add_scalebar.add_scalebar(npq_img,
                                         pixelresolution=pixelresolution,
                                         barwidth=20,
-                                        barlocation='lower left')   
+                                        barlocation='lower left')
     npq_img.set_size_inches(6,6, forward=False)
     npq_img.savefig(os.path.join(imgdir, outfn + '_NPQ.png'),
                     bbox_inches='tight',
@@ -335,6 +337,7 @@ df_avg = pd.concat(grplist)
 
 # %% Add genotype information
 gtypeinfo = pd.read_csv(os.path.join(indir, 'genotype_map.csv'))
+gtypeinfo = strip_whitespace.strip_dfwhitespace(gtypeinfo)  #strip whitespace from any fields. using sep="\s*,\s" in read_csv doesn't work. first header value get messed up
 df_avg2 = (pd.merge(df_avg,
                     gtypeinfo,
                     on=['treatment', 'sampleid', 'roi'],

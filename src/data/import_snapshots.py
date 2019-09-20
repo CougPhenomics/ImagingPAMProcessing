@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 from src.data import Multi2Singleframes
 
-def import_snapshots(snapshotdir, camera='vis'):
+def import_snapshots(snapshotdir, camera='vis', extract_frames=True):
     '''
     Input:
     snapshotdir = directory of .tif files
@@ -19,16 +19,21 @@ def import_snapshots(snapshotdir, camera='vis'):
     # snapshotdir = 'data/raw_snapshots/psII'
     framedir = os.path.join(snapshotdir, 'pimframes')
     os.makedirs(framedir, exist_ok=True)
-    # first find the multiframe .tif exports from the pim files
-    fns = [fn for fn in glob.glob(pathname=os.path.join(snapshotdir,'raw_multiframe','*.tif'))]
-    for fn in fns:
-        Multi2Singleframes.extract_frames(fn,framedir)
+    if extract_frames:
+        # first find the multiframe .tif exports from the pim files
+        fns = [fn for fn in glob.glob(pathname=os.path.join(snapshotdir,'raw_multiframe','*.tif'))]
+        for fn in fns:
+            Multi2Singleframes.extract_frames(fn,framedir)
 
     # now find the individual frame files
     fns = []
     for fname in os.listdir(framedir):
         if re.search(r"-[0-9]+.tif", fname):
             fns.append(fname)
+
+    if not any(fns):
+        raise RuntimeError('No tif files for the pim frames were found. Did you forget to set extract_frames = True ?')
+    
 
     flist = list()
     fn=fns[0]
