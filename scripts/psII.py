@@ -248,27 +248,30 @@ def image_avg(fundf):
     npq_img = add_scalebar.add_scalebar(npq_img,
                                         pixelresolution=pixelresolution,
                                         barwidth=20,
-                                        barlocation='lower left')
+                                        barlocation='lower left')   
+    npq_img.set_size_inches(6,6, forward=False)
     npq_img.savefig(os.path.join(imgdir, outfn + '_NPQ.png'),
-                    bbox_inches='tight')
+                    bbox_inches='tight',
+                    dpi = 150)
     npq_img.clf()
 
-    yii_img = pcv.visualize.pseudocolor(
-        YII,
-        obj=None,
-        mask=newmask,
-        cmap=custom_colormaps.get_cmap('imagingwin'),
-        axes=False,
-        min_value=0,
-        max_value=1,
-        background='black',
-        obj_padding=0)
+    yii_img = pcv.visualize.pseudocolor(YII,
+                                        obj=None,
+                                        mask=newmask,
+                                        cmap=custom_colormaps.get_cmap('imagingwin'),
+                                        axes=False,
+                                        min_value=0,
+                                        max_value=1,
+                                        background='black',
+                                        obj_padding=0)
     yii_img = add_scalebar.add_scalebar(yii_img,
                                         pixelresolution=pixelresolution,
-                                        barwidth=20,
-                                        barlocation='lower left')
+                                        barwidth = 20,
+                                        barlocation = 'lower left')
+    yii_img.set_size_inches(6,6, forward=False)
     yii_img.savefig(os.path.join(imgdir, outfn + '_YII.png'),
-                    bbox_inches='tight')
+                    bbox_inches='tight',
+                    dpi = 150)
     yii_img.clf()
 
     # check yii values for uniqueness
@@ -304,19 +307,16 @@ if pcv.params.debug == 'print':
 df = df.sort_values(['treatment', 'sampleid', 'imageid'])
 # this only works if every category is represented in the first day in the dataframe
 param_order = df.parameter.unique()
-df['parameter'] = pd.Categorical(
-    df.parameter, categories=param_order, ordered=True)
+df['parameter'] = pd.Categorical(df.parameter, categories=param_order, ordered=True)
 
-# importlib.reload(createmasks)
-# # start testing
-# df2 = df.query('(sampleid == "tray4" and (jobdate == "2019-08-10" or jobdate == "2019-08-01") and parameter == "FvFm")')
+# importlib.reload(add_scalebar)
+# # staret testing
+# df2=df.query('(sampleid == "tray4" and (jobdate == "2019-08-10" or jobdate == "2019-08-01") and (parameter == "t300_ALon" or parameter == "FvFm"))')
 # del df2
 # fundf = df2
-# fundf=df2.iloc[[1,3]]
 # del fundf
 # # # fundf
 # # end testing
-
 
 # %% groupby loop works better with multiple ROI
 # check for subsetted dataframe
@@ -344,6 +344,3 @@ df_avg2 = (pd.merge(df_avg,
 (df_avg2.sort_values(['treatment', 'date', 'sampleid', 'imageid'])
  .to_csv(os.path.join(outdir, 'output_psII_level0.csv'), na_rep='nan', float_format='%.4f', index=False)
  )
-
-
-#%%
