@@ -336,7 +336,7 @@ df_avg = pd.concat(grplist)
 
 
 # %% Add genotype information
-gtypeinfo = pd.read_csv(os.path.join(indir, 'genotype_map.csv'))
+gtypeinfo = pd.read_csv(os.path.join(indir, 'genotype_map.csv'), skipinitialspace=True)
 gtypeinfo = strip_whitespace.strip_dfwhitespace(gtypeinfo)  #strip whitespace from any fields. using sep="\s*,\s" in read_csv doesn't work. first header value get messed up
 df_avg2 = (pd.merge(df_avg,
                     gtypeinfo,
