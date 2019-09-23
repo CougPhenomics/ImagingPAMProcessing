@@ -15,6 +15,8 @@ The workflow in this repository uses both Python and R and assumes you are famil
 
 The quickest way to install python, jupyter, and plantcv is with [Miniconda](https://docs.conda.io/en/latest/miniconda.html) (a lightweight version of Anaconda). Follow the installation instructions for [plantcv](https://plantcv.readthedocs.io/en/stable/installation/) to get everything setup. You may also need to install additional packages as defined at the top of the python scripts, see [`scripts/psII.py`](scripts/psII.py). This is usually done at the anaconda prompt with `conda install <package name>`.
 
+To recreate the exact environment with which this repository was tested, download and install miniconda. Using a terminal/CMD window, change directory to this project directory that contains `environment.yml` and use the command `conda env create -f environment.yml`
+
 To install R, download [R from CRAN](https://www.r-project.org/) and then install [RStudio](https://www.rstudio.com/) to make it easier to work with R scripts. You will also need to install additional libraries as defined at the top of the R scripts, see [`scripts/makeVideos.R`](scripts/makeVideos.py) and [`reports/postprocessingQC.Rmd`](reports/postprocessingQC.Rmd). 
 
 Lastly, download this repository as a .zip file (see green "Clone or download" button) and extract it to your computer.
