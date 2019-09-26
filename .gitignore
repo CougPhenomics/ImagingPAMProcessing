@@ -44,5 +44,6 @@ debug/*/
 
 # too many output files don't version control well
 output/*/
+!output/from_diy_data/.gitkeep
 
 *.zip
