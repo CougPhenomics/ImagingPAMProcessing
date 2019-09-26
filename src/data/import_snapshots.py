@@ -11,7 +11,8 @@ def import_snapshots(snapshotdir, camera='vis', extract_frames=True):
     Input:
     snapshotdir = directory of .tif files
     camera = the camera which captured the images. 'vis' or 'psii'
-
+    extract_frames = boolean. Should the frames from the multimage TIF be extracted? Useful if you are rerunning an analysis.
+    
     Export multiframe .tif into snapshotdir using format {treatment}-{yyyymmdd}-{sampleid}.tif
     '''
 

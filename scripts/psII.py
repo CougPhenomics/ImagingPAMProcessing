@@ -1,11 +1,12 @@
+'''
+This is the primary script to extract phenotypes from a stack of multiimage tif files. See the README for instructions for how to use this script.
+'''
+
 # %% Setup
-# Export .tif into outdir from LemnaBase using format {0}-{3}-{1}-{6}
+# Import these libraries (make sure they are installed)
 from plantcv import plantcv as pcv
-import glob
 import importlib
 import os
-import re as re
-from collections import defaultdict
 from datetime import datetime, timedelta
 import cv2 as cv2
 import numpy as np
@@ -15,13 +16,13 @@ import warnings
 warnings.filterwarnings("ignore", module="matplotlib")
 warnings.filterwarnings("ignore", module='plotnine')
 
-# %% Import functions to get snaphots, create masks, and setup image classification
+# %% Import functions from src/ directory to get snaphots, create masks, and setup image classification
 from src.data import import_snapshots
 from src.segmentation import createmasks
 from src.util import masked_stats
 from src.util import strip_whitespace
 from src.viz import add_scalebar, custom_colormaps
-# %% io directories
+# %% Setup the io directories
 indir = 'diy_data'
 outdir = os.path.join('output', 'from_' + indir)
 debugdir = os.path.join('debug', 'from_' + indir)
@@ -32,51 +33,62 @@ os.makedirs(debugdir, exist_ok=True)
 os.makedirs(maskdir, exist_ok=True)
 os.makedirs(fluordir, exist_ok=True)
 
-# %% pixel pixel_resolution
-# mm (this is approx and should only be used for scalebar)
+# %% pixel resolution (mm)
+# This needs to be measured for the camera and working distance. With an ImagingPAM you could punch a leaf and then relate the number of pixels to the physical dimension.  See scripts/estimate_area_rgb.py for a method of getting pixel dimensions in ImageJ
 pixelresolution = 0.35
 
-# %% Import tif files
-# importlib.reload(import_snapshots)
+# %% Import tif file information based on the filenames. If extract_frames=True it will save each frame form the multiframe TIF to a separate file in data/pimframes/ with a numeric suffix
 fdf = import_snapshots.import_snapshots(indir, 'psii', extract_frames=True)
 
-# %% Define the frames from the PSII measurements
+# %% Define the frames from the PSII measurements and merge this information with the filename information
 pimframes = pd.read_csv(os.path.join(
     indir, 'pimframes_map.csv'), skipinitialspace=True)
-pimframes = strip_whitespace.strip_dfwhitespace(pimframes)
+pimframes = strip_whitespace.strip_dfwhitespace(pimframes)#this eliminate weird whitespace around any of the character fields
 fdf_dark = (pd.merge(fdf.reset_index(),
                      pimframes,
                      on=['imageid'],
                      how='right'))
 
-# %% remove absorptivity measurements which are blank images
-# also remove Ft_FRon measurements. THere is no Far Red light.
+# %% remove absorptivity measurements (frames 3 and 4) which are blank images in the default protocol
 df = (fdf_dark
       .query('~parameter.str.contains("Abs") and ~parameter.str.contains("FRon")', engine='python')
       )
 
-# %% remove the duplicate Fm and Fo frames where frame = Fmp and Fp from imageid 5,6
+# %% remove the duplicate Fm and Fo frames where frame = Fmp or Fp (frames 5 and 6)
 df = df.query(
     '(parameter!="FvFm") or (parameter=="FvFm" and (frame=="Fo" or frame=="Fm") )'
 )
 
-# %% Setup output
+# %% Arrange dataframe of metadata so Fv/Fm comes first
+param_order = pimframes.parameter.unique()
+df['parameter'] = pd.Categorical(df.parameter,
+                                 categories=param_order,
+                                 ordered=True)
+
+
+# %% Setup Debug parmaeters
+# pcv.params.debug can be 'plot', 'print', or 'None'. 'plot' is useful if you are testing your pipeline over a few samples so you can see each step.
 pcv.params.debug = 'plot'  # 'print' #'plot', 'None'
-plt.rcParams["figure.figsize"] = (9, 9)
-plt.rcParams["font.family"] = "Arial"
+plt.rcParams["figure.figsize"] = (9, 9) #Figures will show 9x9inches which fits my monitor well.
+plt.rcParams["font.family"] = "Arial" # All text is Arial
 
-# %% image fucntion
+# %% The main analysis function
+# I like to reload my mask function to make sure it's the latest if I've been optimizing it
+# importlib.reload(createmasks)
 
-importlib.reload(createmasks)
+# This function takes a dataframe of metadata that was created above. We loop through each pair of images to compute photosynthetic parameters
 def image_avg(fundf):
+    # Predefine some variables
     global c, h, roi_c, roi_h
 
-    # fn_min = fundf.filename.iloc[0]
+    # Get the filename for minimum and maximum fluoresence
     fn_min = fundf.query('frame == "Fo" or frame == "Fp"').filename.values[0]
-    # fn_max = fundf.filename.iloc[1]
     fn_max = fundf.query('frame == "Fm" or frame == "Fmp"').filename.values[0]
+
+    # Get the parameter name that links these 2 frames
     param_name = fundf['parameter'].iloc[0]
 
+    # Create a new output filename that combines existing filename with parameter
     outfn = os.path.splitext(os.path.basename(fn_max))[0]
     outfn_split = outfn.split('-')
     basefn = "-".join(outfn_split[0:-1])
@@ -84,10 +96,12 @@ def image_avg(fundf):
     outfn = "-".join(outfn_split)
     print(outfn)
 
+    # Make some directories based on sample id to keep output organized
     sampleid = outfn_split[2]
     fmaxdir = os.path.join(fluordir, sampleid)
     os.makedirs(fmaxdir, exist_ok=True)
 
+    # If debug mode is 'print', create a specific debug dir for each pim file
     if pcv.params.debug == 'print':
         debug_outdir = os.path.join(debugdir, outfn)
         if not os.path.exists(debug_outdir):
@@ -101,11 +115,12 @@ def image_avg(fundf):
     fdark = np.zeros_like(img)
     out_flt = fdark.astype('float32')  # <- needs to be float32 for imwrite
 
+    # We always identify the leaf area using Fm and then apply the mask to subsequent frames in the induction curve for the same day and sample
     if param_name == 'FvFm':
         # create mask
         mask = createmasks.psIImask(img)
 
-        # find objects and setup roi
+        # find objects and setup roi to designate where the plants should be
         c, h = pcv.find_objects(img, mask)
         roi_c, roi_h = pcv.roi.multi(img,
                                      coord=(160, 90),
@@ -118,20 +133,22 @@ def image_avg(fundf):
         #setup individual roi plant masks
         newmask = np.zeros_like(mask)
 
-        # compute fvfm
+        # compute fv/fm and save to file
         Fv, hist_fvfm = pcv.fluor_fvfm(
             fdark=fdark, fmin=imgmin, fmax=img, mask=mask, bins=128)
         YII = np.divide(Fv, img, out=out_flt.copy(),
                         where=np.logical_and(mask > 0, img > 0))
         cv2.imwrite(os.path.join(fmaxdir, outfn + '_fvfm.tif'), YII)
 
+        # NPQ is 0
         NPQ = np.zeros_like(YII)
 
         # print Fm
         cv2.imwrite(os.path.join(fmaxdir, outfn + '_fmax.tif'), img)
         # NPQ will always be an array of 0s
 
-    else:
+
+    else: # compute YII and NPQ if parameter is other than FvFm
         #use cv2 to read image becase pcv.readimage will save as input_image.png overwriting img
         newmask = cv2.imread(os.path.join(
             maskdir, basefn + '-FvFm_mask.png'), -1)
@@ -155,13 +172,13 @@ def image_avg(fundf):
         cv2.imwrite(os.path.join(fmaxdir, outfn + '_npq.tif'), NPQ)
     # end if-else Fv/Fm
 
-    # Make as many copies of incoming dataframe as there are ROIs
+    # Make as many copies of incoming dataframe as there are ROIs so all results can be saved
     outdf = fundf.copy()
     for i in range(0, len(roi_c)-1):
         outdf = outdf.append(fundf)
     outdf.imageid = outdf.imageid.astype('uint8')
 
-    # Initialize lists to store variables for each ROI and iterate
+    # Initialize lists to store variables for each ROI and iterate through each plant
     frame_avg = []
     yii_avg = []
     yii_std = []
@@ -179,7 +196,7 @@ def image_avg(fundf):
         # extract ith hierarchy
         rh = roi_h[i]
 
-        # Filter objects based on being in the ROI
+        # Filter objects based on being in the defined ROI
         try:
             roi_obj, hierarchy_obj, submask, obj_area = pcv.roi_objects(
                 img, roi_contour=rc, roi_hierarchy=rh, object_contour=c, obj_hierarchy=h, roi_type='partial')
@@ -211,6 +228,7 @@ def image_avg(fundf):
             if param_name == 'FvFm':
                 newmask = pcv.image_add(newmask, plant_mask)
 
+            # Calc mean and std dev of fluoresence, YII, and NPQ and save to list
             frame_avg.append(masked_stats.mean(imgmin, plant_mask))
             frame_avg.append(masked_stats.mean(img, plant_mask))
             # need double because there are two images per loop
@@ -222,8 +240,12 @@ def image_avg(fundf):
             npq_avg.append(masked_stats.mean(NPQ, plant_mask))
             npq_std.append(masked_stats.std(NPQ, plant_mask))
             npq_std.append(masked_stats.std(NPQ, plant_mask))
+
+            # Check if plant is compeltely within the frame of the image
             inbounds.append(pcv.within_frame(plant_mask))
             inbounds.append(pcv.within_frame(plant_mask))
+
+            #Compute the plantarea in mm^2
             plantarea.append(obj_area * pixelresolution**2.)
             plantarea.append(obj_area * pixelresolution**2.)
 
@@ -234,8 +256,7 @@ def image_avg(fundf):
     if param_name == 'FvFm':
         pcv.print_image(newmask, os.path.join(maskdir, outfn + '_mask.png'))
 
-    # save pseudocolor of all plants in image
-    # print pseduocolor
+    # Output a pseudocolor of NPQ and YII for each induction period for each image
     imgdir = os.path.join(outdir, 'pseudocolor_images', sampleid)
     os.makedirs(imgdir, exist_ok=True)
     npq_img = pcv.visualize.pseudocolor(NPQ,
@@ -251,6 +272,7 @@ def image_avg(fundf):
                                         pixelresolution=pixelresolution,
                                         barwidth=20,
                                         barlocation='lower left')
+    # If you change the output size and resolution you will need to adjust the  timelapse video script
     npq_img.set_size_inches(6,6, forward=False)
     npq_img.savefig(os.path.join(imgdir, outfn + '_NPQ.png'),
                     bbox_inches='tight',
@@ -276,8 +298,9 @@ def image_avg(fundf):
                     dpi = 150)
     yii_img.clf()
 
-    # check yii values for uniqueness
+    # check YII values for uniqueness between all ROI. nonunique ROI suggests the plants grew into each other and can no longer be reliably separated in image processing.
     # a single value isn't always robust. I think because there ae small independent objects that fall in one roi but not the other that change the object within the roi slightly.
+    # also note, I originally designed this for trays of 2 pots. It will not detect if e.g. 2 out of 9 plants grow into each other
     rounded_avg = [round(n, 3) for n in yii_avg]
     rounded_std = [round(n, 3) for n in yii_std]
     isunique = not (rounded_avg.count(rounded_avg[0]) == len(yii_avg) and
@@ -295,38 +318,34 @@ def image_avg(fundf):
     outdf['unique_roi'] = isunique
 
     return (outdf)
+# end of function!
 
-
-# %% Setup output
+# %% Setup Debug parameters
+#by default params.debug should be 'None' when you are ready to process all your images
 pcv.params.debug = 'None'
-# importlib.reload(createmasks)
+# if you choose to print debug files to disk then remove the old ones first (if they exist)
 if pcv.params.debug == 'print':
     import shutil
     shutil.rmtree(os.path.join(debugdir), ignore_errors=True)
 
-# %% Compute image average and std for min/max fluorescence
-# must group so there are pair of images Fp and Fmp or Fo and Fm. make sure df was sorted by datetime and imageid at least
-df = df.sort_values(['treatment', 'sampleid', 'imageid'])
-# this only works if every category is represented in the first day in the dataframe
-param_order = df.parameter.unique()
-df['parameter'] = pd.Categorical(df.parameter, categories=param_order, ordered=True)
-
-# importlib.reload(add_scalebar)
-# # staret testing
-# df2=df.query('(sampleid == "tray4" and (jobdate == "2019-08-10" or jobdate == "2019-08-01") and (parameter == "t300_ALon" or parameter == "FvFm"))')
+# %% Testing dataframe
+# If you need to test new function or threshold values you can subset your dataframe to analyze some images
+# Comment df2= if you want to analyze all files!
+# df2=df.query('(sampleid == "tray4" and (jobdate == "2019-08-10" or jobdate == "2019-08-01"))')# and (parameter == "t300_ALon" or parameter == "FvFm"))')
 # del df2
 # fundf = df2
 # del fundf
 # # # fundf
 # # end testing
 
-# %% groupby loop works better with multiple ROI
+# %% Process the files
 # check for subsetted dataframe
 if 'df2' not in globals():
     df2 = df
 else:
     print('df2 already exists!')
 
+# Each unique combination of treatment, sampleid, jobdate, parameter should result in exactly 2 rows in the dataframe that correspond to Fo/Fm or F'/Fm'
 dfgrps = df2.groupby(['treatment', 'sampleid', 'jobdate', 'parameter'])
 grplist = []
 for grp, grpdf in dfgrps:
@@ -335,7 +354,7 @@ for grp, grpdf in dfgrps:
 df_avg = pd.concat(grplist)
 
 
-# %% Add genotype information
+# %% Add genotype information to the processing results
 gtypeinfo = pd.read_csv(os.path.join(indir, 'genotype_map.csv'), skipinitialspace=True)
 gtypeinfo = strip_whitespace.strip_dfwhitespace(gtypeinfo)  #strip whitespace from any fields. using sep="\s*,\s" in read_csv doesn't work. first header value get messed up
 df_avg2 = (pd.merge(df_avg,
@@ -344,6 +363,7 @@ df_avg2 = (pd.merge(df_avg,
                     how='outer')
            )
 
+# %% Write the tabular results to file!
 (df_avg2.sort_values(['treatment', 'date', 'sampleid', 'imageid'])
  .to_csv(os.path.join(outdir, 'output_psII_level0.csv'), na_rep='nan', float_format='%.4f', index=False)
  )
