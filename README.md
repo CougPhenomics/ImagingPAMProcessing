@@ -13,7 +13,7 @@ These scripts can be used to efficiently process sets of image files from a Walz
 
 The workflow in this repository uses both Python and R and assumes you are familiar enough with these to use them. In general though, there is very little code you should need to modify.
 
-The quickest way to install python, jupyter, and plantcv is with [Miniconda](https://docs.conda.io/en/latest/miniconda.html) (a lightweight version of Anaconda). Follow the installation instructions for [plantcv](https://plantcv.readthedocs.io/en/stable/installation/) to get everything setup. You may also need to install additional packages as defined at the top of the python scripts, see [`scripts/psII.py`](scripts/psII.py). This is usually done at the anaconda prompt with `conda install <package name>`.
+The quickest way to install python, jupyter, and plantcv is with [Miniconda](https://docs.conda.io/en/latest/miniconda.html) (a lightweight version of Anaconda). Follow the installation instructions for [plantcv](https://plantcv.readthedocs.io/en/stable/installation/) to get everything setup. You may also need to install additional packages as defined at the top of the python scripts, see [`scripts/ImagingPAMProcessing`](scripts/ImagingPAMProcessing.py). This is usually done at the anaconda prompt with `conda install <package name>`.
 
 To recreate the exact environment with which this repository was tested, download and install miniconda. Also, download this repository as a .zip file (see green "Clone or download" button) and extract it to your computer. Using a terminal/CMD window, change directory to this project directory that contains `environment.yml` and use the command `conda env create -f environment.yml`
 
@@ -67,16 +67,16 @@ See `diy_data/` for the dataset used in the manuscript.
 
 ## Run the Image Processing
 
-At the very least, you will need need to modify [`scripts/psII.py`](scripts/psII.py) in 1 place:
+At the very least, you will need need to modify [`scripts/ImagingPAMProcessing.py`](scripts/ImagingPAMProcessing.py) in 1 place:
 1. you must change `indir` to point to your data directory.
 
-It is also likely you will need to modify the location of the ROI to indicate where the plants are in the image. Even if you are using the 9 plant arrangement using the sample crate and 9 pot holders described in the text, it is likely your working distance will be slightly different and therefore your plant positions will be different relative to the image frame. In this case you must change the location of your ROI's as prescibed with `pcv.roi.multi()` in `scripts/psII.py`. See [plantcv documentation](https://plantcv.readthedocs.io/en/stable/roi_multi/) for details. You can test your ROI arrangement by stepping through the analysis with a single image.
+It is also likely you will need to modify the location of the ROI to indicate where the plants are in the image. Even if you are using the 9 plant arrangement using the sample crate and 9 pot holders described in the text, it is likely your working distance will be slightly different and therefore your plant positions will be different relative to the image frame. In this case you must change the location of your ROI's as prescibed with `pcv.roi.multi()` in `scripts/ImagingPAMProcessing`. See [plantcv documentation](https://plantcv.readthedocs.io/en/stable/roi_multi/) for details. You can test your ROI arrangement by stepping through the analysis with a single image.
 
 To run the pipeline, make sure your plantcv python environment is in your path. Open the project directory (this repository that you extracted from the zip) in a terminal/cmd window that includes your conda environment (note the (plantcv) on the left):
 
 ```
 (plantcv) ~/Documents/ImageProcessing> cd <project directory>
-(plantcv) ~/Documents/ImageProcessing/DIY> ipython scripts/psII.py
+(plantcv) ~/Documents/ImageProcessing/DIY> ipython scripts/ImagingPAMProcessing.py
 ```
 
 ## Confirming Image Segmentation
