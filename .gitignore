@@ -36,13 +36,13 @@ dask*/
 # Ignore subfolders of data folder that contain tifs and pims but keep config files
 *data/*/
 
-# debug folder
-debug/*
-!debug/
+# Ignore debug
+debug/*/
+!debug/*/control-20190731-tray5-FvFm
+!debug/*/control-20190806-tray5-FvFm
 
-# output tif files don't version control well
-# exclude output on default but allow experiment 1 output as examples
-# output/from_diy_data/fluorescence
-output/
+
+# too many output files don't version control well
+output/*/
 
 *.zip
