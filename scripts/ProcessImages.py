@@ -22,6 +22,7 @@ from src.segmentation import createmasks
 from src.util import masked_stats
 from src.util import strip_whitespace
 from src.viz import add_scalebar, custom_colormaps
+
 # %% Setup the io directories
 indir = 'diy_data'
 outdir = os.path.join('output', 'from_' + indir)
@@ -360,7 +361,7 @@ gtypeinfo = strip_whitespace.strip_dfwhitespace(gtypeinfo)  #strip whitespace fr
 df_avg2 = (pd.merge(df_avg,
                     gtypeinfo,
                     on=['treatment', 'sampleid', 'roi'],
-                    how='outer')
+                    how='inner')
            )
 
 # %% Write the tabular results to file!
