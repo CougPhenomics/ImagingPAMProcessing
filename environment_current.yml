@@ -1,0 +1,8 @@
+name: plantcv_current
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - plantcv
+  - jupyter
