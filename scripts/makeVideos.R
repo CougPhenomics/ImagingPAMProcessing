@@ -1,6 +1,7 @@
 library(magick)
 library(here)
 library(tidyverse)
+library(lubridate)
 
 # setup directories
 indir = here('output', 'from_diy_data', 'pseudocolor_images')

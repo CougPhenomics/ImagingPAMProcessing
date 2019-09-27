@@ -17,7 +17,7 @@ The quickest way to install Python and PlantCV is with [Miniconda](https://docs.
 
 You may also find the installation instructions helpful in the [PlantCV documentation](https://plantcv.readthedocs.io/en/stable/installation/#install-via-a-package-manager). 
 
-To install R, download [R from CRAN](https://www.r-project.org/) and then install [RStudio](https://www.rstudio.com/) to make it easier to work with R scripts. You will also need to install additional libraries using `install.packages(c('tidyverse','here','magick','tidylog','cowplot','scico','RColorBrewer'))`. 
+To install R, download [R from CRAN](https://www.r-project.org/) and then install [RStudio](https://www.rstudio.com/) to make it easier to work with R scripts. You will also need to install additional libraries using `install.packages(c('tidyverse','here','magick','tidylog','cowplot','scico','RColorBrewer','bookdown'))`. If something doesn't work please install the requested packages, but the specific package versions used in development can be found in [`RsessionInfo.txt`](RsessionInfo.txt).
 
 If you have not done so already, download this repository as a .zip file (see green "Clone or download" button) and extract it to your computer.
 

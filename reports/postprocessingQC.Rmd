@@ -21,6 +21,8 @@ library(tidylog)
 library(here)
 library(cowplot)
 library(scico)
+library(RColorBrewer)
+library(scales)
 ```
 
 ```{r setup_plotdir}
