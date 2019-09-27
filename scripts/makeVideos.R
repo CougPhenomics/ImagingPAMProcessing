@@ -1,28 +1,54 @@
-library(magick)
-library(here)
-library(tidyverse)
-library(lubridate)
+#! Rscript
+# Command-line script to produce timelapse videos
+# Input: 
+#   datadir = relative path to data-specific output directory
+#   genotype_mamp = relative path to csv containing genotype info
+# Example: Rscript --vanilla scripts/makeVideos.R "output/from_diy_data" "diy_data/genotype_map.csv"
+
+# Get command line arguments
+args = commandArgs(trailingOnly = T)
+# args  = c('output/from_diy_data', 'diy_data')
+
+# test if there are two arguments: if not, return an error
+if (length(args)<2) {
+  stop('Two arguments must be supplied:\n1. output directory for a dataset\n2. path to genotype_map.csv\nFor Example: Rscript --vanilla makeVideos.R "output/from_diy_data" "diy_data/genotype_map.csv"', call.=T)
+}
+
+# function to try to load required makes. if not loadable, install.
+load_install = function(pkg){
+  if(!require(pkg, character.only = T)){
+    install.packages(pkg, character.only =T, repos = 'https://cloud.r-project.org')
+    require(pkg, character.only = T)
+    }
+}
+
+# load all packages
+libs = c('magick','tidyverse','lubridate','av')
+sapply(libs, FUN = load_install)
+
 
 # setup directories
-indir = here('output', 'from_diy_data', 'pseudocolor_images')
-outdir = here('output', 'from_diy_data', 'timelapse')
+datadir = args[1]
+indir = file.path(datadir, 'pseudocolor_images')
+outdir = file.path(datadir, 'timelapse')
 dir.create(outdir, show = F, rec = T)
 
 # get genotype info
-gmap = read_csv(here('diy_data', 'genotype_map.csv'))
+gmap = read_csv(args[2])
 
 # setup roi positions for genotype labels
-roi = unique(gmap$roi)
-nroi = max(gmap$roi)
-rownum = floor(roi / 3) + 1
-colnum = floor(roi / 3 + 1)
+nrow = 3
+ncol = 3
+nroi = nrow*ncol
+rownum = floor((seq_len(nroi)-1) / nrow) + 1
+colnum = floor((seq_len(nroi)-1) / ncol + 1)
 x0 = 95
 xoffset = 170
 y0 = 45
 yoffset = 170
 xpos = x0 + (rownum - 1) * xoffset
 ypos = y0 + (colnum - 1) * yoffset
-coords = crossing(xpos, ypos) %>% arrange(ypos) %>% mutate(roi = seq(0, 8)) %>% inner_join(gmap)
+coords = crossing(xpos, ypos) %>% arrange(ypos) %>% mutate(roi = seq_len(nroi)-1) %>% inner_join(gmap)
 
 # function to create treatment label
 get_treatment <- function(traynum) {
