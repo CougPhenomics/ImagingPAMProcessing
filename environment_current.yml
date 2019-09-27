@@ -1,4 +1,4 @@
-name: plantcv_current
+name: plantcv
 channels:
   - conda-forge
   - bioconda

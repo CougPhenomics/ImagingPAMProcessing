@@ -13,11 +13,11 @@ These scripts can be used to efficiently process sets of image files from a Walz
 
 The workflow in this repository uses both Python and R and assumes you are familiar enough with these to use them. In general though, there is very little code you should need to modify.
 
-The quickest way to install Python and PlantCV is with [Miniconda](https://docs.conda.io/en/latest/miniconda.html) (a lightweight version of Anaconda). To recreate the exact environment with which this repository was tested, download and install Miniconda. Also, download this repository as a .zip file (see green "Clone or download" button) and extract it to your computer. Using a Terminal (MacOS, Linux) or the Anaconda Prompt (Windows), change directory to the repository directory you extracted that contains `environment_manuscript.yml` and use the command `conda env create -f environment_manuscript.yml` to install all necessary packages. More generally, you should be able to use `conda env create -f environment_current.yml` to install the most current versions of these libraries (including PlantCV). To activate the environment, use for example `conda activate plantcv_current` where `plantcv_current` is the name of your environment.
+The quickest way to install Python and PlantCV is with [Miniconda](https://docs.conda.io/en/latest/miniconda.html) (a lightweight version of Anaconda). To recreate the exact environment with which this repository was developed, download and install Miniconda. Also, download this repository as a .zip file (see green "Clone or download" button) and extract it to your computer. Using a Terminal (MacOS, Linux) or the Anaconda Prompt (Windows), change directory to the repository directory you extracted that contains `environment_manuscript.yml` and use the command `conda env create -f environment_manuscript.yml` to install all necessary packages. More generally, you should be able to use `conda env create -f environment_current.yml` to install the most current versions of these libraries (including PlantCV). To activate the environment, use for example `conda activate plantcv_current` where `plantcv_current` is the name of your environment.
 
 You may also find the installation instructions helpful in the [PlantCV documentation](https://plantcv.readthedocs.io/en/stable/installation/#install-via-a-package-manager). 
 
-To install R, download [R from CRAN](https://www.r-project.org/) and then install [RStudio](https://www.rstudio.com/) to make it easier to work with R scripts. You will also need to install additional libraries using `install.packages(c('tidyverse','here','magick','tidylog','cowplot','scico','RColorBrewer','bookdown'))`. If something doesn't work please install the requested packages, but the specific package versions used in development can be found in [`RsessionInfo.txt`](RsessionInfo.txt).
+To install R, download [R from CRAN](https://www.r-project.org/) and then install [RStudio](https://www.rstudio.com/) to make it easier to work with R scripts. You will also need to install additional libraries using `install.packages(c('tidyverse','here','magick','tidylog','cowplot','scico','RColorBrewer','bookdown','av'))`. If something doesn't work please install the requested packages, but the specific package versions used in development can be found in [`RsessionInfo.txt`](RsessionInfo.txt).
 
 If you have not done so already, download this repository as a .zip file (see green "Clone or download" button) and extract it to your computer.
 
@@ -29,20 +29,6 @@ Each tif file should be labeled with exactly 2 dashes, 2 descriptors, and a date
 ### Document the Metadata
 
 Additionally you will need `pimframes_map.csv` to describe each frame and `genotype_map.csv` to describe the genotype of each plant. It is important that metadata of your filename descriptors and your images match.
-
-The contents of `diy_data/genotype_map.csv` should have 3 column headers EXACTLY as specified in the example file. If you are following the methods in our manuscript then you will have the numbers 0 through 8 as your roi numbers (for a 3x3 grid of plants). Make sure to identify your own genotypes for each plant in the last column:
-
-```
-treatment, sampleid, roi, gtype
-control, tray2, 0, wt
-control, tray2, 1, stn7
-control, tray2, 2, stn7
-control, tray2, 3, wt
-...
-etc
-...
-
-```
 
 The contents of `diy_data/pimframes.csv` should have 3 column headers EXACTLY as specified in the example file. The `imageid` is an identifier for each frame of each pim file that is appended to the end of the filename when the multiframe tif is converted to singleframe tifs. `frame` defines the frame and the order is standard for a .pim file (e.g. Fp = F', Fmp = Fm'). `parameter` is used to link the two frames as a single photosynthetic measurement:
 
@@ -61,6 +47,20 @@ imageid,frame,parameter
 ...
 etc
 ...
+```
+
+The contents of `diy_data/genotype_map.csv` should have 3 column headers EXACTLY as specified in the example file. If you are following the methods in our manuscript then you will have the numbers 0 through 8 as your roi numbers (for a 3x3 grid of plants). Make sure to identify your own genotypes for each plant in the last column:
+
+```
+treatment, sampleid, roi, gtype
+control, tray2, 0, wt
+control, tray2, 1, stn7
+control, tray2, 2, stn7
+control, tray2, 3, wt
+...
+etc
+...
+
 ```
 
 See `diy_data/` for the dataset used in the manuscript.
