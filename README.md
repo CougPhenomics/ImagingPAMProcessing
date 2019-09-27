@@ -13,11 +13,11 @@ These scripts can be used to efficiently process sets of image files from a Walz
 
 The workflow in this repository uses both Python and R and assumes you are familiar enough with these to use them. In general though, there is very little code you should need to modify.
 
-The quickest way to install python, jupyter, and plantcv is with [Miniconda](https://docs.conda.io/en/latest/miniconda.html) (a lightweight version of Anaconda). Follow the installation instructions for [plantcv](https://plantcv.readthedocs.io/en/stable/installation/) to get everything setup. You may also need to install additional packages as defined at the top of the python scripts, see [`scripts/ImagingPAMProcessing`](scripts/ImagingPAMProcessing.py). This is usually done at the anaconda prompt with `conda install <package name>`.
+The quickest way to install Python and PlantCV is with [Miniconda](https://docs.conda.io/en/latest/miniconda.html) (a lightweight version of Anaconda). To recreate the exact environment with which this repository was tested, download and install Miniconda. Also, download this repository as a .zip file (see green "Clone or download" button) and extract it to your computer. Using a Terminal (MacOS, Linux) or the Anaconda Prompt (Windows), change directory to the repository directory you extracted that contains `environment_manuscript.yml` and use the command `conda env create -f environment_manuscript.yml` to install all necessary packages. More generally, you should be able to use `conda env create -f environment_current.yml` to install the most current versions of these libraries (including PlantCV). To activate the environment, use for example `conda activate plantcv_current` where `plantcv_current` is the name of your environment.
 
-To recreate the exact environment with which this repository was tested, download and install miniconda. Also, download this repository as a .zip file (see green "Clone or download" button) and extract it to your computer. Using a terminal/CMD window, change directory to this project directory that contains `environment.yml` and use the command `conda env create -f environment.yml`
+You may also find the installation instructions helpful in the [PlantCV documentation](https://plantcv.readthedocs.io/en/stable/installation/#install-via-a-package-manager). 
 
-To install R, download [R from CRAN](https://www.r-project.org/) and then install [RStudio](https://www.rstudio.com/) to make it easier to work with R scripts. You will also need to install additional libraries as defined at the top of the R scripts, see [`scripts/makeVideos.R`](scripts/makeVideos.py) and [`reports/postprocessingQC.Rmd`](reports/postprocessingQC.Rmd). 
+To install R, download [R from CRAN](https://www.r-project.org/) and then install [RStudio](https://www.rstudio.com/) to make it easier to work with R scripts. You will also need to install additional libraries using `install.packages(c('tidyverse','here','magick','tidylog','cowplot','scico','RColorBrewer'))`. 
 
 If you have not done so already, download this repository as a .zip file (see green "Clone or download" button) and extract it to your computer.
 
@@ -67,16 +67,22 @@ See `diy_data/` for the dataset used in the manuscript.
 
 ## Run the Image Processing
 
-At the very least, you will need need to modify [`scripts/ImagingPAMProcessing.py`](scripts/ImagingPAMProcessing.py) in 1 place:
+At the very least, you will need need to modify [`scripts/ProcessImages.py`](scripts/ProcessImages.py) in 1 place:
 1. you must change `indir` to point to your data directory.
 
-It is also likely you will need to modify the location of the ROI to indicate where the plants are in the image. Even if you are using the 9 plant arrangement using the sample crate and 9 pot holders described in the text, it is likely your working distance will be slightly different and therefore your plant positions will be different relative to the image frame. In this case you must change the location of your ROI's as prescibed with `pcv.roi.multi()` in `scripts/ImagingPAMProcessing`. See [plantcv documentation](https://plantcv.readthedocs.io/en/stable/roi_multi/) for details. You can test your ROI arrangement by stepping through the analysis with a single image.
+Three other modifications may be necessary to work well with other data:
 
-To run the pipeline, make sure your plantcv python environment is in your path. Open the project directory (this repository that you extracted from the zip) in a terminal/cmd window that includes your conda environment (note the (plantcv) on the left):
+1. It is also likely you will need to modify the location of the ROI to indicate where the plants are in the image. Even if you are using the 9 plant arrangement using the sample crate and 9 pot holders described in the text, it is likely your working distance will be slightly different and therefore your plant positions will be different relative to the image frame. In this case you must change the location of your ROI's as prescibed with `pcv.roi.multi()` in `scripts/ProcessImages`. See [plantcv documentation](https://plantcv.readthedocs.io/en/stable/roi_multi/) for details. You can test your ROI arrangement by stepping through the analysis with a single image.
+
+2. You many also need to adjust the image segmentation function `psIImask` in `src/segmentatoin/createmasks.py`. Image segmentation is generally quite specific to the imaging conditions. An automated estimate for the initial threshold value is provided based on Yen’s Algorithm (Yen et al. 1995), which is an entropy-based method implemented in the Python package scikit-image (Walt et al. 2014). This is followed by cleaning steps to remove small noise in the mask. In particular, we expect the cleaning steps may need to be modified to adapt to unique imaging conditions from individual Imaging-PAM setups. It should be noted that severe algae growth will contaminate the images and make the image segmentation difficult. For more guidance on image segmentation we refer the reader to the excellent tutorials hosted by PlantCV (https://plantcv.readthedocs.io).
+
+3. The python script outputs plant area that is automatically determined from the object detection algorithm implemented through PlantCV. It is important that each user update the `pixel_resolution` variable for their own setup to accurately convert pixels to mm^2. This variable will be specific to the camera and working distance and can be found near the top of the main python script. This need only be performed once if the camera settings remain constant. We recommend imaging a plant with a hole punch of a known size and then measuring the width in pixels of the hole using ImageJ. Pixel_resolution is then calculated as diameter in mm of holepunch divided by diameter in pixels of holepunch. 
+
+To run the pipeline, make sure your plantcv python environment is in your path. You may need to run the command `conda activate plantcv` in your Terminal or Anacona Prompt window. Also, open the project directory with `cd` (this repository that you extracted from the zip) in the Terminal or Anaconda Prompt window that includes your conda environment (note the (plantcv) on the left). Then use ipython to run the script:
 
 ```
-(plantcv) ~/Documents/ImageProcessing> cd <project directory>
-(plantcv) ~/Documents/ImageProcessing/DIY> ipython scripts/ImagingPAMProcessing.py
+(plantcv) ~/Documents/phenomics> cd <project directory>
+(plantcv) ~/Documents/phenomics/DIY> ipython scripts/ProcessImages.py
 ```
 
 ## Confirming Image Segmentation
@@ -93,5 +99,5 @@ Visualization is mostly done in R. Please install R and RStudio. Open the RStudi
 
 2. Timeseries and Deviation Plots!
     
-    Additionally, we developed an Rmarkdown report that can generate timeseries plots and deviation plots to visualize the treatment effect and difference from WT. These plots are designed to help you quickly identify anomalous data, either due to bad processing or an exciting new phenotype! Figure 7 from the paper is a compilation of a subset of these figures and saved to `output/from_diy_data/figs`. To generate the report, open `reports/postprocessingQC.Rmd` and "Knit" the report. An html file should appear next to the .Rmd file with all the figures.
+    Additionally, we developed an Rmarkdown report that can generate timeseries plots and deviation plots to visualize the treatment effect and difference from WT. These plots are designed to help you quickly identify anomalous data, either due to bad processing or an exciting new phenotype! Figure 6 from the paper is a compilation of a subset of these figures and saved to `output/from_diy_data/figs`. To generate the report, open `reports/postprocessingQC.Rmd` and "Knit" the report. An html file should appear next to the .Rmd file with all the figures.
 
