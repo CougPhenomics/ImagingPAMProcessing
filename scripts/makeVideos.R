@@ -24,7 +24,7 @@ load_install = function(pkg){
 
 # load all packages
 libs = c('magick','tidyverse','lubridate','av')
-sapply(libs, FUN = load_install)
+tmp = sapply(libs, FUN = load_install)
 
 
 # setup directories
@@ -35,6 +35,13 @@ dir.create(outdir, show = F, rec = T)
 
 # get genotype info
 gmap = read_csv(args[2])
+
+# get data processed
+output = read_csv(file.path(datadir,'output_psII_level0.csv')) %>% 
+  select(treatment, sampleid, roi, gtype)
+
+# filter gmap for available output files
+gmap = inner_join(gmap, output) %>% distinct(treatment, sampleid, roi, gtype)
 
 # setup roi positions for genotype labels
 nrow = 3
@@ -93,6 +100,15 @@ arrange_gif = function(il, parameter_string) {
   dtes0 = get_dates(fns0)
   dtes1 = get_dates(fns1)
   
+  # filter for common dates
+  commondtes <- intersect(dtes0,dtes1)
+  elements0 = dtes0 %in% commondtes
+  elements1 = dtes1 %in% commondtes
+  dtes0 <- dtes0[elements0]
+  dtes1 <- dtes1[elements1]
+  fns0 <- fns0[elements0]
+  fns1 <- fns1[elements1]
+
   # get genotypes
   g0 = gmap %>% filter(sampleid == sampleid0) %>% pull(gtype)
   g1 = gmap %>% filter(sampleid == sampleid1) %>% pull(gtype)
