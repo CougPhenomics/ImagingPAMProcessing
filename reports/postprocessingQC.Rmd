@@ -36,6 +36,7 @@ dir.create(figdir, rec=T, showWarnings = F)
 ```{r readdata, include=T}
 data = read_csv(file.path(datadir,'output_psII_level0.csv'), #reading the data from the image processing where we explicitly define what NA values look like
                 na=c('nan','--') ) %>% 
+  drop_na(date) %>% 
   mutate(date = as.Date(date), #formatting dates properly makes plotting easier
          idate = date-min(date)+1, #days after treatment begins
          treatment = as_factor(treatment), #creating factors will make plotting order easier to change
@@ -131,7 +132,7 @@ plantarea_ts =
   plantareadF %>% 
   ggplot(aes(x=idate))+
   geom_ribbon(aes(ymin=avg-sterr, ymax=avg+sterr, group=interaction(gtype,treatment)), fill='grey80')+
-  geom_path(aes(x=idate, y=avg, color=gtype, linetype = treatment),size=1.2)+
+  geom_path(aes(y=avg, color=gtype, linetype = treatment),size=1.2)+
   scale_color_manual(name = 'Genotype', values = gtypeColors, labels = italic_labels(names(gtypeColors)))+
   scale_linetype_discrete(name = 'Treatment')+
   # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d')+
@@ -150,9 +151,9 @@ plantarea_ts =
 ```{r}
 plantarea_errors <- 
   plantareadF %>% 
-  ggplot()+
-  geom_col(aes(x=idate, y=avg, fill=gtype), position=position_dodge2())+
-  geom_errorbar(aes(x=idate, ymin = avg-sterr, ymax=avg+sterr), width=0.9, position=position_dodge2(), color='grey50')+
+  ggplot(aes(x=as.factor(idate)))+
+  geom_col(aes(y=avg, fill=gtype), position=position_dodge2())+
+  geom_errorbar(aes(ymin = avg-sterr, ymax=avg+sterr), width=0.9, position=position_dodge2(), color='grey50')+
   facet_wrap(~treatment)+
   scale_fill_manual(values = gtypeColors, guide=F)+
   # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d')+
@@ -163,6 +164,8 @@ plantarea_errors <-
   labs(title = 'Plant Area',
        subtitle = 'Error bars represent +/- 1 standard error',
        y = '')
+
+plantarea_errors
 ```
 
 ```{r, fig.height=8}
@@ -350,7 +353,7 @@ chgdF = full_join(plantareadF %>% filter(treatment == 'fluc'),
 colorlimits_plantarea = max(abs(range(chgdF %>% pull(chg), na.rm=T)))
 
 plantarea_raster_treatment <- 
-  ggplot(chgdF, aes(x=idate))+
+  ggplot(chgdF, aes(x=as.factor(idate)))+
   geom_raster(aes(y=gtype,fill=chg))+
   # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d', expand=c(0,0))+
     scale_y_discrete(limits = rev(levels(chgdF$gtype)),
@@ -407,7 +410,7 @@ segloc <-
   drop_na() 
 
 
-ggplot(fvfmchg %>% arrange(sampleid, roi), aes(x=idate))+
+ggplot(fvfmchg %>% arrange(sampleid, roi), aes(x=as.factor(idate)))+
   geom_raster(aes(y= interaction(gtype, treatment, sampleid, roi, lex.order = T, sep=':'), fill=chg))+
   geom_hline(data = segloc, aes(yintercept =  loc-0.5))+
   # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d', expand=c(0,0))+
@@ -426,7 +429,7 @@ ggplot(fvfmchg %>% arrange(sampleid, roi), aes(x=idate))+
 colorlimits_fvfm = max(abs(range(chgdF %>% filter(parameter=='FvFm') %>% pull(chg), na.rm=T)))
 
 fvfm_raster_treatment <- 
-  ggplot(chgdF %>% filter(parameter=='FvFm'), aes(x=idate))+
+  ggplot(chgdF %>% filter(parameter=='FvFm'), aes(x=as.factor(idate)))+
   geom_raster(aes(y=gtype,fill=chg))+
   # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d', expand=c(0,0))+
   scale_y_discrete(limits = rev(levels(chgdF$gtype)),
@@ -491,7 +494,7 @@ chgdF = full_join(yii_ss %>% filter(treatment == 'fluc'),
 colorlimits = max(abs(range(chgdF$chg, na.rm=T)))
 
 yii_ss_raster_treatment <- 
-  ggplot(chgdF, aes(x=idate))+
+  ggplot(chgdF, aes(x=as.factor(idate)))+
   geom_raster(aes(y=gtype,fill=chg))+
   # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d', expand=c(0,0))+
     scale_y_discrete(limits = rev(levels(chgdF$gtype)),
@@ -572,7 +575,7 @@ chgdF = full_join(npq_ss %>% filter(treatment == 'fluc'),
 colorlimits = max(abs(range(chgdF$chg, na.rm=T)))
 
 npq_ss_raster_treatment <- 
-  ggplot(chgdF, aes(x=idate))+
+  ggplot(chgdF, aes(x=as.factor(idate)))+
   geom_raster(aes(y=gtype,fill=chg))+
   # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d', expand=c(0,0))+
     scale_y_discrete(limits = rev(levels(chgdF$gtype)),
@@ -616,7 +619,7 @@ chgdF = full_join(plantareadF,
 colorlimits_plantarea = max(colorlimits_plantarea, max(abs(range(chgdF$chg, na.rm=T))))
 
 plantarea_raster_wt <- 
-  ggplot(chgdF, aes(x=idate))+
+  ggplot(chgdF, aes(x=as.factor(idate)))+
   geom_raster(aes(y=interaction(treatment,gtype),fill=chg))+
   # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d', expand=c(0,0))+
   scale_y_discrete(limits = rev(levels(fct_drop(interaction(chgdF$treatment, chgdF$gtype)))),
@@ -674,7 +677,7 @@ segloc <-
   drop_na() 
 
 
-ggplot(fvfmchg %>% arrange(sampleid, roi), aes(x=idate))+
+ggplot(fvfmchg %>% arrange(sampleid, roi), aes(x=as.factor(idate)))+
   geom_raster(aes(y= interaction(gtype, treatment, sampleid, roi, lex.order = T, sep=':'), fill=chg))+
   geom_hline(data = segloc, aes(yintercept =  loc-0.5))+
   # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d', expand=c(0,0))+
@@ -693,7 +696,7 @@ ggplot(fvfmchg %>% arrange(sampleid, roi), aes(x=idate))+
 colorlimits_fvfm = max(colorlimits_fvfm, max(abs(range(chgdF %>% filter(parameter=='FvFm') %>% pull(chg), na.rm=T))))
 
 fvfm_raster_wt <- 
-  ggplot(chgdF %>% filter(parameter=='FvFm'), aes(x=idate))+
+  ggplot(chgdF %>% filter(parameter=='FvFm'), aes(x=as.factor(idate)))+
   geom_raster(aes(y=interaction(treatment, gtype),fill=chg))+
   # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d', expand=c(0,0))+
   scale_y_discrete(limits = rev(levels(fct_drop(interaction(chgdF$treatment, chgdF$gtype)))),
@@ -756,7 +759,7 @@ chgdF = full_join(yii_ss,
 
 colorlimits = max(abs(range(chgdF$chg, na.rm=T)))
 yii_ss_raster_wt <- 
-  ggplot(chgdF, aes(x=idate))+
+  ggplot(chgdF, aes(x=as.factor(idate)))+
   geom_raster(aes(y=interaction(treatment,gtype),fill=chg))+
   # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d', expand=c(0,0))+
   scale_y_discrete(limits = rev(levels(fct_drop(interaction(chgdF$treatment, chgdF$gtype)))),
@@ -835,7 +838,7 @@ chgdF = full_join(npq_ss,
 colorlimits = max(abs(range(chgdF$chg, na.rm=T)))
 
 npq_ss_raster_wt <- 
-  ggplot(chgdF, aes(x=idate))+
+  ggplot(chgdF, aes(x=as.factor(idate)))+
   geom_raster(aes(y=interaction(treatment,gtype),fill=chg))+
   # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d', expand=c(0,0))+
   scale_y_discrete(drop=T,
@@ -907,7 +910,7 @@ col2 = plot_grid(
            limits=c(-colorlimits_plantarea, colorlimits_plantarea)*1.3, 
            oob = scales::squish,
            trans = scales::modulus_trans(p=2))+
-     scale_x_continuous(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
+     scale_x_discrete(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
    fvfm_raster_treatment+
      guides(fill=F)+
      scale_fill_scico(name = 'Deviation\n(Modulus base 10)', 
@@ -917,7 +920,7 @@ col2 = plot_grid(
                       trans = scales::modulus_trans(p=10))+
      theme(axis.title.y = element_blank(),
            axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5))+
-     scale_x_continuous(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
+     scale_x_discrete(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
    yii_ss_raster_treatment+guides(fill=F)+
      theme(axis.title.y = element_blank(),
            axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5))+
@@ -926,7 +929,7 @@ col2 = plot_grid(
          limits=c(-colorlimits_ssyii, colorlimits_ssyii)*1.2, 
          oob = scales::squish,
          trans = scales::modulus_trans(p=10))+
-     scale_x_continuous(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
+     scale_x_discrete(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
    npq_ss_raster_treatment+guides(fill=F)+
      theme(axis.title.y = element_blank(),
            axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5))+
@@ -935,7 +938,7 @@ col2 = plot_grid(
          limits=c(-colorlimits_ssnpq, colorlimits_ssnpq)*1.1, 
          oob = scales::squish,
          trans = scales::modulus_trans(p=6))+
-     scale_x_continuous(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
+     scale_x_discrete(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
   ncol=1, 
   align = 'hv',
   labels = LETTERS[c(3,6,9,12)],
@@ -957,7 +960,7 @@ col3 = plot_grid(
            limits=c(-colorlimits_plantarea, colorlimits_plantarea)*1.3, 
            oob = scales::squish,
            trans = scales::modulus_trans(p=2))+
-     scale_x_continuous(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
+     scale_x_discrete(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
    fvfm_raster_wt+
      theme(legend.position = 'right', 
            legend.direction = 'vertical',
@@ -971,7 +974,7 @@ col3 = plot_grid(
            limits=c(-colorlimits_fvfm, colorlimits_fvfm)*1.5, 
            oob = scales::squish,
            trans = scales::modulus_trans(p=10))+
-     scale_x_continuous(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
+     scale_x_discrete(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
    yii_ss_raster_wt+
      theme(legend.position = 'right', 
            legend.direction = 'vertical',
@@ -985,7 +988,7 @@ col3 = plot_grid(
            limits=c(-colorlimits_ssyii, colorlimits_ssyii)*1.2, 
            oob = scales::squish,
            trans = scales::modulus_trans(p=10))+
-     scale_x_continuous(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
+     scale_x_discrete(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
    npq_ss_raster_wt+
      theme(legend.position = 'right', 
            legend.direction = 'vertical',
@@ -999,7 +1002,7 @@ col3 = plot_grid(
            limits=c(-colorlimits_ssnpq, colorlimits_ssnpq)*1.1, 
            oob = scales::squish,
            trans = scales::modulus_trans(p=6))+
-     scale_x_continuous(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
+     scale_x_discrete(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
     ncol=1,
     align = 'hv',
     labels = LETTERS[c(4,7,10,13)],
