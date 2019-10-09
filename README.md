@@ -1,11 +1,11 @@
 # Phenomics Workflow for Processing Images from Walz Imaging-PAM
 This directory contains the scripts that accompany the manuscript: 
 
-*Dynamic light experiments and semi-automated phenotyping enabled by self-built plant growth racks and simple upgrades to the Walz Imaging-PAM*
+*Dynamic light experiments and semi-automated phenotyping enabled by self-built plant growth racks and simple upgrades to the IMAGING-PAM*
 
 by Dominik Schneider, Laura S. Lopez, Meng Li, Joseph D. Crawford, David M. Savage, and Hans-Henning Kunz
 
-DOI: ###
+You can find our preprint here: https://www.biorxiv.org/content/10.1101/795476v1
 
 These scripts can be used to efficiently process sets of image files from a Walz Imaging-PAM that have been setup in line with the recommendations in our manuscript.
 
