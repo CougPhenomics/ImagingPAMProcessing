@@ -15,19 +15,23 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo=F, message=F, warning = F, fig.width=16)
 library(tidyverse)
 library(tidylog)
-library(here)
+library(rprojroot)
 library(cowplot)
 library(scico)
 library(RColorBrewer)
 library(scales)
+
+# rprojroot::has_file('.here')
+root = find_root('.here')
+knitr::opts_chunk$set(echo=F, message=F, warning = F, fig.width=16)
+knitr::opts_knit$set(root.dir = root)
 ```
 
 ```{r setup_plotdir}
-datadir = here('output','from_diy_data')
-figdir = file.path(datadir,'figs')
+datadir = file.path(root,'output','from_diy_data')
+figdir = file.path(root,datadir,'figs')
 dir.create(figdir, rec=T, showWarnings = F)
 ```
 
@@ -117,7 +121,7 @@ data <-
   data %>% 
   filter(unique_roi == T, obj_in_frame == T) # we only want the observations that passed our tests.
 
-write_csv(data, here('output/from_diy_data/output_psII_level1.csv'))
+write_csv(data, file.path(datadir,'output_psII_level1.csv'))
 
 ```
 
