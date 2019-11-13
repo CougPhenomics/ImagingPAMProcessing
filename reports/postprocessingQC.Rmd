@@ -51,8 +51,12 @@ data = read_csv(file.path(datadir,'output_psII_level0.csv'), #reading the data f
 
 ```{r gtypeColors, include=F}
 # set your genotype color palette. 'black' is always WT 
-gtypeColors = c('black',RColorBrewer::brewer.pal(length(levels(data$gtype))-1,'Set2'))
-names(gtypeColors) <- levels(data$gtype)
+if( length(levels(data$gtype)) <= 9){
+  gtypeColors = c('black',RColorBrewer::brewer.pal(8,'Set2'))[1:length(levels(data$gtype))]
+  names(gtypeColors) <- levels(data$gtype)
+} else{
+  stop('You have more than 9 genotypes. You will need to add more colors to the color palette')
+}
 
 italic_labels <- function(names){
   if(is.factor(names)){
