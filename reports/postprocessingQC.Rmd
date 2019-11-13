@@ -31,7 +31,7 @@ knitr::opts_knit$set(root.dir = root)
 
 ```{r setup_plotdir}
 datadir = file.path(root,'output','from_diy_data')
-figdir = file.path(root,datadir,'figs')
+figdir = file.path(datadir,'figs')
 dir.create(figdir, rec=T, showWarnings = F)
 ```
 
