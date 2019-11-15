@@ -49,7 +49,7 @@ etc
 ...
 ```
 
-The contents of `diy_data/genotype_map.csv` should have 3 column headers EXACTLY as specified in the example file. If you are following the methods in our manuscript then you will have the numbers 0 through 8 as your roi numbers (for a 3x3 grid of plants). Make sure to identify your own genotypes for each plant in the last column:
+The contents of `diy_data/genotype_map.csv` should have 3 column headers EXACTLY as specified in the example file. If you are following the methods in our manuscript then you will have the numbers 0 through 8 as your roi numbers (for a 3x3 grid of plants). Make sure to identify your own genotypes for each plant in the last column. You **MUST** have one treatment called `control` and one genotype called `wt`.
 
 ```
 treatment, sampleid, roi, gtype
