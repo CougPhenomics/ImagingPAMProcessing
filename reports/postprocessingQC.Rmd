@@ -39,10 +39,11 @@ dir.create(figdir, rec=T, showWarnings = F)
 
 ```{r readdata, include=T}
 data = read_csv(file.path(datadir,'output_psII_level0.csv'), #reading the data from the image processing where we explicitly define what NA values look like
-                na=c('nan','--') )
+                na=c('nan','--'),
+                col_types = cols(treatment = col_character(),genotype = col_character()))
 
-if(!(any(grepl('control',tolower(unique(data$treatment)))) & any(grepl('WT',toupper(unique(data$gtype)))))){
-  stop('You do not have a "control" treatment and/or a "WT" genotype.\nPlease rename one genotype to "WT" and one treatment to "control".')
+if(!(grepl('control',tolower(unique(data$treatment))) & grepl('WT',toupper(unique(data$gtype))))){
+  stop('Something is wrong. Either your file was not correctly imported or you do not have a "control" treatment and/or a "WT" genotype.')
 }
 
 # data$treatment[sample(nrow(data),floor(nrow(data)/3))] = '250'
