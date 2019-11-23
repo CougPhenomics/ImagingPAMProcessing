@@ -77,24 +77,25 @@ cntrl_ids = unique(gmap %>% filter(treatment == 'control') %>% pull(sampleid))
 l =  cross2(fluc_ids, cntrl_ids)
 
 # test values
-# sampleid0 = 'tray2'
-# sampleid1 = 'tray5'
+# sampleid_c = 'tray2'
+# sampleid_t = 'tray5'
 # parameter_string = 'FvFm_YII'#'FvFm_YII' #'t300_ALon_YII'
 # il = l[[1]]
 
 # define gif making function
 arrange_gif = function(il, parameter_string) {
   uil = unlist(il, rec = F)
-  sampleid1 = uil[1]
-  sampleid0 = uil[2]
-  print(paste(sampleid0, sampleid1, sep = ' x '))
+  sampleid_t = uil[1]
+  sampleid_c = uil[2]
+  gtype_treatment_label_t = get_treatment(sampleid_t)
+  print(paste(sampleid_c, sampleid_t, sep = ' x '))
   print(parameter_string)
   
   # get images
-  fns0 = dir(file.path(indir, sampleid0),
+  fns0 = dir(file.path(indir, sampleid_c),
              pattern = parameter_string,
              full.names = T)
-  fns1 = dir(file.path(indir, sampleid1),
+  fns1 = dir(file.path(indir, sampleid_t),
              pattern = parameter_string,
              full.names = T)
   
@@ -112,8 +113,8 @@ arrange_gif = function(il, parameter_string) {
   fns1 <- fns1[elements1]
 
   # get genotypes
-  g0 = gmap %>% filter(sampleid == sampleid0) %>% pull(gtype)
-  g1 = gmap %>% filter(sampleid == sampleid1) %>% pull(gtype)
+  g0 = gmap %>% filter(sampleid == sampleid_c) %>% pull(gtype)
+  g1 = gmap %>% filter(sampleid == sampleid_t) %>% pull(gtype)
   # crossing(dtes0,dtes1) #TODO: filter dates and filenames for common dates
   
   stopifnot(all(dtes0 == dtes1))
@@ -125,7 +126,7 @@ arrange_gif = function(il, parameter_string) {
   # annotate with genotype
   imgs0a = image_annotate(
     imgs0,
-    get_treatment(sampleid0),
+    get_treatment(sampleid_c),
     size = 24,
     font = 'Arial',
     weight = 700,
@@ -146,7 +147,7 @@ arrange_gif = function(il, parameter_string) {
   )
   
   coords %>%
-    filter(sampleid == sampleid0) %>%
+    filter(sampleid == sampleid_c) %>%
     group_by(xpos, ypos, roi) %>%
     group_walk(
       keep = T,
@@ -180,7 +181,7 @@ arrange_gif = function(il, parameter_string) {
   
   imgs1a = image_annotate(
     imgs1,
-    get_treatment(sampleid1),
+    gtype_treatment_label_t,
     size = 24,
     font = 'Arial',
     weight = 700,
@@ -200,7 +201,7 @@ arrange_gif = function(il, parameter_string) {
   )
   
   coords %>%
-    filter(sampleid == sampleid1) %>%
+    filter(sampleid == sampleid_t) %>%
     group_by(xpos, ypos, roi) %>%
     group_walk(
       keep = T,
@@ -242,7 +243,8 @@ arrange_gif = function(il, parameter_string) {
     }
   }
   # newgif
-  outfn = paste0(parameter_string, '_', sampleid0, '_x_', sampleid1, '.gif')
+  treatmentlabel = strsplit(' ',gtype_treatment_label_t)[[1]][2]
+  outfn = paste0(parameter_string, '_', sampleid_c, '_x_', sampleid_t, '_',treatmentlabel,'.gif')
   image_write_video(newgif, file.path(outdir, outfn), framerate = 2)
   # image_write_gif(newgif,file.path(outdir, outfn), delay=0.5)
 }
