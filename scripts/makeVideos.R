@@ -7,7 +7,7 @@
 
 # Get command line arguments
 args = commandArgs(trailingOnly = T)
-# args  = c('output/from_diy_data', 'diy_data')
+# args  = c('output/from_diy_data', 'diy_data/genotype_map.csv')
 
 # test if there are two arguments: if not, return an error
 if (length(args)<2) {
@@ -89,6 +89,7 @@ arrange_gif = function(il, parameter_string) {
   sampleid_c = uil[2]
   gtype_treatment_label_t = get_treatment(sampleid_t)
   print(paste(sampleid_c, sampleid_t, sep = ' x '))
+  print(gtype_treatment_label_t)
   print(parameter_string)
   
   # get images
@@ -243,7 +244,7 @@ arrange_gif = function(il, parameter_string) {
     }
   }
   # newgif
-  treatmentlabel = strsplit(' ',gtype_treatment_label_t)[[1]][2]
+  treatmentlabel = strsplit(gtype_treatment_label_t,' ')[[1]][2]
   outfn = paste0(parameter_string, '_', sampleid_c, '_x_', sampleid_t, '_',treatmentlabel,'.gif')
   image_write_video(newgif, file.path(outdir, outfn), framerate = 2)
   # image_write_gif(newgif,file.path(outdir, outfn), delay=0.5)
