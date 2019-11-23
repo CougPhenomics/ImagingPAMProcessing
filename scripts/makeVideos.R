@@ -23,22 +23,24 @@ load_install = function(pkg){
 }
 
 # load all packages
-libs = c('magick','tidyverse','lubridate','av')
+libs = c('magick','tidyverse','lubridate','av','rprojroot')
 tmp = sapply(libs, FUN = load_install)
 
 
 # setup directories
+root = rprojroot::find_root('.here')
 datadir = args[1]
-indir = file.path(datadir, 'pseudocolor_images')
-outdir = file.path(datadir, 'timelapse')
+indir = file.path(root, datadir, 'pseudocolor_images')
+outdir = file.path(root, datadir, 'timelapse')
 dir.create(outdir, show = F, rec = T)
 
 # get genotype info
-gmap = read_csv(args[2])
+gmap = read_csv(file.path(root,args[2]))
 
 # get data processed
-output = read_csv(file.path(datadir,'output_psII_level0.csv')) %>% 
-  select(treatment, sampleid, roi, gtype)
+output = read_csv(file.path(root, datadir,'output_psII_level0.csv'),
+                  col_types = cols(treatment = col_character(), gtype = col_character())) %>% 
+  dplyr::select(treatment, sampleid, roi, gtype)
 
 # filter gmap for available output files
 gmap = inner_join(gmap, output) %>% distinct(treatment, sampleid, roi, gtype)
