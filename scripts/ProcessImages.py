@@ -198,29 +198,16 @@ def image_avg(fundf):
         rh = roi_h[i]
 
         # Filter objects based on being in the defined ROI
-        try:
-            roi_obj, hierarchy_obj, submask, obj_area = pcv.roi_objects(
-                img, roi_contour=rc, roi_hierarchy=rh, object_contour=c, obj_hierarchy=h, roi_type='partial')
-        except RuntimeError as err:
-            print('!!!', err, str(i))
+        # Filter objects based on being in the defined ROI
+        roi_obj, hierarchy_obj, submask, obj_area = pcv.roi_objects(
+            img,
+            roi_contour=rc,
+            roi_hierarchy=rh,
+            object_contour=c,
+            obj_hierarchy=h,
+            roi_type='partial')
 
-            frame_avg.append(np.nan)
-            frame_avg.append(np.nan)
-            yii_avg.append(np.nan)
-            yii_avg.append(np.nan)
-            yii_std.append(np.nan)
-            yii_std.append(np.nan)
-            npq_avg.append(np.nan)
-            npq_avg.append(np.nan)
-            npq_std.append(np.nan)
-            npq_std.append(np.nan)
-            inbounds.append(np.nan)
-            inbounds.append(np.nan)
-            plantarea.append(0)
-            plantarea.append(0)
-
-        else:
-
+        if obj_area > 0:
             # Combine multiple plant objects within an roi together
             plant_contour, plant_mask = pcv.object_composition(
                 img=img, contours=roi_obj, hierarchy=hierarchy_obj)
@@ -250,7 +237,25 @@ def image_avg(fundf):
             plantarea.append(obj_area * pixelresolution**2.)
             plantarea.append(obj_area * pixelresolution**2.)
 
-        # end try-except-else
+        else:
+            print('!!! No plant detected in roi ', str(i))
+
+            frame_avg.append(0)
+            frame_avg.append(0)
+            yii_avg.append(np.nan)
+            yii_avg.append(np.nan)
+            yii_std.append(np.nan)
+            yii_std.append(np.nan)
+            npq_avg.append(np.nan)
+            npq_avg.append(np.nan)
+            npq_std.append(np.nan)
+            npq_std.append(np.nan)
+            inbounds.append(np.nan)
+            inbounds.append(np.nan)
+            plantarea.append(0)
+            plantarea.append(0)
+
+        # end if-else
     # end roi loop
 
     # save mask of all plants to file after roi filter
