@@ -39,15 +39,14 @@ dir.create(figdir, rec=T, showWarnings = F)
 
 ```{r readdata, include=T}
 data = read_csv(file.path(datadir,'output_psII_level0.csv'), #reading the data from the image processing where we explicitly define what NA values look like
-                na=c('nan','--'),
-                col_types = cols(treatment = col_character(),genotype = col_character()))
+                na=c('nan','--') )
 
-if(!(grepl('control',tolower(unique(data$treatment))) & grepl('WT',toupper(unique(data$gtype))))){
-  stop('Something is wrong. Either your file was not correctly imported or you do not have a "control" treatment and/or a "WT" genotype.')
+if(!(any(grepl('control',tolower(unique(data$treatment)))) & any(grepl('WT',toupper(unique(data$gtype)))))){
+  stop('You do not have a "control" treatment and/or a "WT" genotype.\nPlease rename one genotype to "WT" and one treatment to "control".')
 }
 
 # data$treatment[sample(nrow(data),floor(nrow(data)/3))] = '250'
-  
+
 data = data %>% 
   drop_na(date) %>% 
   mutate(date = as.Date(date), #formatting dates properly makes plotting easier
@@ -83,23 +82,23 @@ italic_labels <- function(names){
   if(is.factor(names)){
     names = as.character(names)
   }
-sapply(strsplit(names,'[. ]'), 
-  function(x) {
-    if( all(x != 'WT') & length(x)>1){
-      x=tolower(x)
-        # parse(text = paste0(x[1],".","italic(", tolower(x[2]), ")"))
-        bquote(paste(.(x[1]),".",italic(.(x[2]))))
-      # substitute(paste(treatment,".",italic(gtype), list(treatment = tolower(x[1]) , gtype=tolower(x[2]) ) ))
-    } else if(all(x!='WT') & length(x)==1){
-      x=tolower(x)
-      substitute(italic(gtype), list(gtype=tolower(x) ) )
-        # parse(text = paste0("italic(", tolower(x), ")"))
-    } else if(length(x)>1){
-        paste(x[1],x[2],sep='.')
-    } else {
-        x
-    }
-  })}
+  sapply(strsplit(names,'[. ]'), 
+         function(x) {
+           if( all(x != 'WT') & length(x)>1){
+             x=tolower(x)
+             # parse(text = paste0(x[1],".","italic(", tolower(x[2]), ")"))
+             bquote(paste(.(x[1]),".",italic(.(x[2]))))
+             # substitute(paste(treatment,".",italic(gtype), list(treatment = tolower(x[1]) , gtype=tolower(x[2]) ) ))
+           } else if(all(x!='WT') & length(x)==1){
+             x=tolower(x)
+             substitute(italic(gtype), list(gtype=tolower(x) ) )
+             # parse(text = paste0("italic(", tolower(x), ")"))
+           } else if(length(x)>1){
+             paste(x[1],x[2],sep='.')
+           } else {
+             x
+           }
+         })}
 
 ```
 
@@ -107,16 +106,16 @@ sapply(strsplit(names,'[. ]'),
 
 During image processing the detected objects are checked for:
 
-  1. whether the plant is completely in frame (top row) 
-  
-  2. whether the plants are unique (bottom row)
+1. whether the plant is completely in frame (top row) 
+
+2. whether the plants are unique (bottom row)
 
 
 ```{r plot, echo=F, message=F, fig.height=8, fig.width=20}
 data %>% 
   filter(parameter == 'FvFm') %>% 
   gather(qc, qcvalue, obj_in_frame:unique_roi) %>%
-ggplot()+
+  ggplot()+
   geom_tile(aes(x=sampleid,y=roi,fill=qcvalue),colour='grey80')+
   facet_grid(qc~date)+
   scale_y_continuous(limits=c(-1,9), breaks = seq(0,8), expand = c(0,0))+
@@ -202,7 +201,7 @@ plot_grid(plantarea_ts,plantarea_errors)
 
 # YII
 
-       
+
 ```{r, fig.width=18, fig.height=8}
 yiidF = data %>% 
   filter(frame %in% c('Fm','Fmp')) %>% 
@@ -231,7 +230,7 @@ fvfm_ts = ggplot(yiidF %>% filter(parameter == 'FvFm'), aes(x=idate)) +
        subtitle = 'Shaded region represents +/- 1 standard error',
        y = 'average')+
   scale_color_manual(values=gtypeColors)+
-    # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d')+ 
+  # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d')+ 
   theme_cowplot()+
   theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1))
 
@@ -247,7 +246,7 @@ ggplot() +
   labs(title = 'YII during Induction Curves')+
   theme_cowplot()+
   theme(axis.text.x = element_text(angle=90, vjust=.4, hjust=1),
-                legend.key.width = unit(0.025,'npc'))
+        legend.key.width = unit(0.025,'npc'))
 ```
 
 ## Steady-state YII
@@ -284,10 +283,10 @@ yii_ss_ts <-
        subtitle = 'Average of last two data points on the Induction Curve\nError bars represent +/- 1 standard error',
        y = 'average')+
   scale_color_manual(values=gtypeColors)+
-    # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d')+
+  # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d')+
   theme_cowplot()+
   theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1),
-                legend.key.width = unit(0.025,'npc'))
+        legend.key.width = unit(0.025,'npc'))
 
 yii_ss_ts
 ```
@@ -305,12 +304,12 @@ npqdF = data %>%
 ggplot() + 
   geom_line(data = npqdF %>% filter(parameter != 'FvFm'), aes(x = parameter, y = avg, group = interaction(treatment,gtype), linetype = treatment, color = gtype), size=1)+
   facet_wrap(~date)+
-    scale_color_manual(values = gtypeColors)+
+  scale_color_manual(values = gtypeColors)+
   scale_x_discrete(drop = TRUE)+
   labs(title = 'NPQ during Induction Curves')+
   theme_cowplot()+
   theme(axis.text.x = element_text(angle=90, vjust=1, hjust=1),
-                legend.key.width = unit(0.025,'npc'))
+        legend.key.width = unit(0.025,'npc'))
 ```
 
 ## Steady-state NPQ
@@ -345,10 +344,10 @@ npq_ss_ts <-
        subtitle = 'Average of last two data points on the Induction Curve\nError bars represent +/- 1 standard error',
        y = 'average')+
   scale_color_manual(values=gtypeColors)+
-    # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d')+
+  # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d')+
   theme_cowplot()+
   theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1),
-                legend.key.width = unit(0.025,'npc'))
+        legend.key.width = unit(0.025,'npc'))
 
 npq_ss_ts
 
@@ -356,6 +355,11 @@ npq_ss_ts
 
 
 # Treatment Effects
+
+```{r}
+# legend title
+chgname = bquote(log[2]~"fold change")
+```
 
 ## How does each genotype respond to the treatment compared to control conditions?
 
@@ -370,7 +374,7 @@ plantarea_controlavg <-
 chgdF = full_join(plantareadF %>% filter(treatment %in% {{explevels}}), 
                   plantarea_controlavg %>% filter(treatment == 'control') %>% select(-treatment), 
                   by=c('idate','date','gtype')) %>% 
-  mutate(chg = avg-baseavg)
+  mutate(chg = log(avg/baseavg,base=2))
 
 
 
@@ -385,15 +389,14 @@ plantarea_raster_treatment <-
   geom_raster(aes(y=gtype,fill=chg))+
   facet_wrap(~treatment)+
   # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d', expand=c(0,0))+
-    scale_y_discrete(limits = rev(levels(chgdF$gtype)),
+  scale_y_discrete(limits = rev(levels(chgdF$gtype)),
                    labels = italic_labels(rev(levels(chgdF$gtype))),
                    expand=c(0,0), 
                    drop=T)+
-  scale_fill_scico(name = 'Deviation\n(Modulus power 2)',
+  scale_fill_scico(name = chgname,
                    palette = 'tofino', 
-                   limits = c(-colorlimits_plantarea, colorlimits_plantarea)*1.3, 
-                   oob = scales::squish, 
-                   trans = scales::modulus_trans(p=2))+ 
+                   limits = c(-colorlimits_plantarea, colorlimits_plantarea), 
+                   oob = scales::squish)+ 
   theme_bw()+
   theme(axis.text.x = element_text(angle=45, hjust=1))+
   labs(title="Treatment effects on plant area compared to treatment control",
@@ -414,7 +417,7 @@ yii_controlavg = yiidF %>%
 chgdF = full_join(yiidF %>% filter(treatment %in% {{explevels}}), 
                   yii_controlavg %>% filter(treatment == 'control') %>% select(-treatment), 
                   by=c('idate','date','parameter','gtype')) %>% 
-  mutate(chg = avg-baseavg)
+  mutate(chg = log(avg/baseavg,base=2))
 
 ```
 
@@ -423,8 +426,8 @@ fvfmchg = data %>%
   select(sampleid, treatment, roi, idate, date, gtype, parameter, yii_avg) %>% 
   filter(parameter == 'FvFm') %>% 
   full_join(yii_controlavg %>% filter(treatment=='control', parameter == 'FvFm') %>% select(-treatment)) %>% 
-  mutate(chg = yii_avg - baseavg)
-         # chg = ifelse(abs(chg) < basesd,NA,chg))
+  mutate(chg = log(yii_avg/baseavg, base=2))
+# chg = ifelse(abs(chg) < basesd,NA,chg))
 
 colorlimits = max(abs(range(fvfmchg$chg, na.rm=T)))
 
@@ -467,12 +470,11 @@ fvfm_raster_treatment <-
   # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d', expand=c(0,0))+
   scale_y_discrete(limits = rev(levels(chgdF$gtype)),
                    labels = italic_labels,
-                    expand = expand_scale(0,0))+
-  scale_fill_scico(name = 'Deviation\n(Modulus base 10)', 
+                   expand = expand_scale(0,0))+
+  scale_fill_scico(name = chgname, 
                    palette = 'lisbon', 
-                   limits=c(-colorlimits_fvfm, colorlimits_fvfm)*1.5, 
-                   oob = scales::squish,
-                   trans = scales::modulus_trans(p=10))+
+                   limits=c(-colorlimits_fvfm, colorlimits_fvfm), 
+                   oob = scales::squish)+
   theme_bw()+
   theme(axis.text.x = element_text(angle=45, hjust=1))+
   labs(title="Treatment effects on Fv/Fm compared to treatment control",
@@ -487,9 +489,9 @@ fvfm_raster_treatment
 ggplot(chgdF %>% filter(parameter != 'FvFm'), aes(x = idate))+
   geom_line(aes( y = chg, color=gtype, linetype = treatment, group=interaction(gtype,treatment)))+
   facet_wrap(~parameter)+
-    scale_color_manual(values = gtypeColors)+
+  scale_color_manual(values = gtypeColors)+
   # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d')+
-labs(title = 'Treatment effects based on the Induction Curve',
+  labs(title = 'Treatment effects based on the Induction Curve',
        subtitle = 'Positive values indicate an increase under treated conditions')+
   theme_cowplot()+
   theme(axis.text.x = element_text(angle=90, vjust=.5, hjust=1),
@@ -521,7 +523,7 @@ controlavg = yii_ss %>%
 
 chgdF = full_join(yii_ss %>% filter(treatment %in% {{explevels}}), 
                   controlavg) %>% 
-        mutate(chg = avg-baseavg)
+  mutate(chg = log(avg/baseavg,base=2))
 
 
 colorlimits = max(abs(range(chgdF$chg, na.rm=T)))
@@ -531,14 +533,13 @@ yii_ss_raster_treatment <-
   geom_raster(aes(y=gtype,fill=chg))+
   facet_wrap(~treatment)+
   # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d', expand=c(0,0))+
-    scale_y_discrete(limits = rev(levels(chgdF$gtype)),
+  scale_y_discrete(limits = rev(levels(chgdF$gtype)),
                    labels = italic_labels,
-                      expand=c(0,0))+
-    scale_fill_scico(name = 'Deviation\n(Modulus base 10)', 
+                   expand=c(0,0))+
+  scale_fill_scico(name = chgname, 
                    palette = 'lisbon', 
-                   limits=c(-colorlimits, colorlimits)*1.2, 
-                   oob = scales::squish,
-                   trans = scales::modulus_trans(p=10))+
+                   limits=c(-colorlimits, colorlimits), 
+                   oob = scales::squish)+
   theme_bw()+
   theme(axis.text.x = element_text(angle=45, hjust=1))+
   labs(title="Treatment effects on steady-state YII compared to treatment control",
@@ -561,7 +562,7 @@ npq_controlavg = npqdF %>%
 chgdF = full_join(npqdF %>% filter(treatment %in% {{explevels}}), 
                   npq_controlavg %>% filter(treatment == 'control') %>% select(-treatment), 
                   by=c('idate','date','parameter','gtype')) %>% 
-  mutate(chg = avg-baseavg) %>% 
+  mutate(chg = log(avg/baseavg,base=2)) %>% 
   filter(parameter != 'FvFm')
 ```
 
@@ -569,9 +570,9 @@ chgdF = full_join(npqdF %>% filter(treatment %in% {{explevels}}),
 ggplot(chgdF, aes(x=idate))+
   geom_line(aes(y = chg, color=gtype, linetype = treatment, group=interaction(gtype,treatment)))+
   facet_wrap(~parameter)+
-    scale_color_manual(values = gtypeColors)+
+  scale_color_manual(values = gtypeColors)+
   # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d')+
-labs(title = 'Treatment effects on NPQ based on Induction Curve',
+  labs(title = 'Treatment effects on NPQ based on Induction Curve',
        subtitle = 'Positive values indicate an increase under treated conditions')+
   theme_cowplot()+
   theme(axis.text.x = element_text(angle=90, vjust=.5, hjust=1),
@@ -604,7 +605,7 @@ controlavg = npq_ss %>%
 
 chgdF = full_join(npq_ss %>% filter(treatment %in% {{explevels}}), 
                   controlavg) %>% 
-  mutate(chg = avg-baseavg)
+  mutate(chg = log(avg/baseavg,base=2))
 
 
 colorlimits = max(abs(range(chgdF$chg, na.rm=T)))
@@ -614,14 +615,13 @@ npq_ss_raster_treatment <-
   geom_raster(aes(y=gtype,fill=chg))+
   facet_wrap(~treatment)+
   # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d', expand=c(0,0))+
-    scale_y_discrete(limits = rev(levels(chgdF$gtype)),
-                   labels = italic_labels(rev(levels(chgdF$gtype))),
-                                      expand=c(0,0))+
-    scale_fill_scico(name = 'Deviation\n(Modulus power 6)', 
+  scale_y_discrete(limits = rev(levels(chgdF$gtype)),
+                   labels = italic_labels,
+                   expand=c(0,0))+
+  scale_fill_scico(name = chgname, 
                    palette = 'berlin', 
                    limits=c(-colorlimits, colorlimits), 
-                   oob = scales::squish,
-                   trans = scales::modulus_trans(p=6))+
+                   oob = scales::squish)+
   theme_bw()+
   theme(axis.text.x = element_text(angle=45, hjust=1))+
   labs(title="Treatment effects on steady-state NPQ compared to treatment control",
@@ -644,7 +644,7 @@ plantarea_WTavg = plantareadF %>%
 chgdF = full_join(plantareadF, 
                   plantarea_WTavg, 
                   by=c('idate','date','treatment')) %>% 
-  mutate(chg = avg-baseavg) %>% 
+  mutate(chg = log(avg/baseavg,base=2)) %>% 
   filter(gtype!='WT')
 
 
@@ -658,19 +658,18 @@ plantarea_raster_wt <-
   ggplot(chgdF, aes(x=as.factor(idate)))+
   geom_raster(aes(y=gtype,fill=chg))+
   facet_wrap(~treatment, ncol=3)+
-    # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d', expand=c(0,0))+
+  # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d', expand=c(0,0))+
   scale_y_discrete(limits = rev(levels(fct_drop(chgdF$gtype))),
-                    label = italic_labels,
+                   label = italic_labels,
                    expand=c(0,0),
                    drop=T)+
-    scale_fill_scico(name = 'Deviation\n(Modulus power 2)', 
+  scale_fill_scico(name = chgname, 
                    palette = 'tofino', 
-                   limits=c(-colorlimits_plantarea, colorlimits_plantarea)*1.3, 
-                   oob = scales::squish,
-                   trans = scales::modulus_trans(p=2))+
+                   limits=c(-colorlimits_plantarea, colorlimits_plantarea), 
+                   oob = scales::squish)+
   theme_bw()+
   theme(axis.text.x = element_text(angle=45, hjust=1))+
- labs(title="Treatment effects on plant area compared to WT",
+  labs(title="Treatment effects on plant area compared to WT",
        subtitle = "Positive values indicate an increase compared to WT")
 
 plantarea_raster_wt
@@ -689,7 +688,7 @@ yii_WTavg = yiidF %>%
 chgdF = full_join(yiidF , 
                   yii_WTavg, 
                   by=c('idate','date','parameter','treatment')) %>% 
-  mutate(chg = avg-baseavg) %>% 
+  mutate(chg = log(avg/baseavg,base=2)) %>% 
   filter(gtype!='WT')
 ```
 
@@ -698,8 +697,8 @@ fvfmchg = data %>%
   select(sampleid, treatment, roi, idate, date, gtype, parameter, yii_avg) %>% 
   filter(parameter == 'FvFm') %>% 
   full_join(yii_WTavg %>% filter(parameter == 'FvFm')) %>% 
-  mutate(chg = yii_avg - baseavg)
-         # chg = ifelse(abs(chg) < basesd,NA,chg))
+  mutate(chg = log(yii_avg/baseavg, base=2))
+# chg = ifelse(abs(chg) < basesd,NA,chg))
 
 colorlimits = max(abs(range(fvfmchg$chg, na.rm=T)))
 
@@ -741,11 +740,10 @@ fvfm_raster_wt <-
   scale_y_discrete(limits = rev(levels(fct_drop(chgdF$gtype))),
                    labels = italic_labels,
                    expand=c(0,0))+
-scale_fill_scico(name = 'Deviation\n(Modulus power 10)', 
+  scale_fill_scico(name = chgname, 
                    palette = 'lisbon', 
-                   limits=c(-colorlimits_fvfm, colorlimits_fvfm)*1.5, 
-                   oob = scales::squish,
-                   trans = scales::modulus_trans(p=10))+
+                   limits=c(-colorlimits_fvfm, colorlimits_fvfm), 
+                   oob = scales::squish)+
   theme_bw()+
   theme(axis.text.x = element_text(angle=45, hjust=1))+
   labs(title="Treatment effects on Fv/Fm compared to WT",
@@ -792,7 +790,7 @@ WTavg = yii_ss %>%
 
 chgdF = full_join(yii_ss, 
                   WTavg, by=c('date','treatment')) %>% 
-  mutate(chg = avg-baseavg) %>% 
+  mutate(chg = log(avg/baseavg,base=2)) %>% 
   filter(gtype!='WT')
 
 
@@ -804,11 +802,11 @@ yii_ss_raster_wt <-
   # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d', expand=c(0,0))+
   scale_y_discrete(labels = italic_labels,
                    expand=c(0,0))+
-scale_fill_scico(name = 'Deviation\n(Modulus power 10)', 
+  scale_fill_scico(name = chgname, 
                    palette = 'lisbon', 
-                   limits=c(-colorlimits, colorlimits)*1.2,
-                   oob = scales::squish,
-                   trans = scales::modulus_trans(p=10))+  theme_bw()+
+                   limits=c(-colorlimits, colorlimits),
+                   oob = scales::squish)+  
+  theme_bw()+
   theme(axis.text.x = element_text(angle=45, hjust=1))+
   labs(title="Treatment effects on steady-state YII compared to WT",
        subtitle = 'Positive values indicate an increase compared to WT')
@@ -829,7 +827,7 @@ npq_WTavg = npqdF %>%
 chgdF = full_join(npqdF, 
                   npq_WTavg, 
                   by=c('idate','date','parameter','treatment')) %>% 
-  mutate(chg = avg-baseavg) %>% 
+  mutate(chg = log(avg/baseavg,base=2)) %>% 
   filter(parameter != 'FvFm')
 ```
 
@@ -868,7 +866,7 @@ WTavg = npq_ss %>%
 chgdF = full_join(npq_ss, 
                   WTavg, 
                   by=c('idate','date','treatment')) %>% 
-  mutate(chg = avg-baseavg) %>% 
+  mutate(chg = log(avg/baseavg,base=2)) %>% 
   filter(gtype!='WT')
 
 
@@ -880,13 +878,13 @@ npq_ss_raster_wt <-
   facet_wrap(~treatment, scales='fixed', ncol=3)+
   # scale_x_date(date_breaks = '1 day', date_labels = '%b-%d', expand=c(0,0))+
   scale_y_discrete(limits = rev(levels(fct_drop(chgdF$gtype))),
-                    labels=italic_labels,
+                   labels=italic_labels,
                    expand=c(0,0))+
-scale_fill_scico(name = 'Deviation\n(Modulus power 6)', 
+  scale_fill_scico(name = chgname, 
                    palette = 'berlin', 
-                   limits=c(-colorlimits, colorlimits)*1.2, 
-                   oob = scales::squish,
-                   trans = scales::modulus_trans(p=6))+  theme_bw()+
+                   limits=c(-colorlimits, colorlimits), 
+                   oob = scales::squish)+ 
+  theme_bw()+
   theme(axis.text.x = element_text(angle=45, hjust=1))+
   labs(title="Treatment effects on steady-state NPQ compared to WT",
        subtitle = 'Positive values indicate an increase compared to WT')
@@ -904,78 +902,74 @@ colorlimits_ssnpq = max(colorlimits_ssnpq, colorlimits)
 
 col1 = plot_grid(
   plantarea_ts+
-     facet_null()+
+    facet_null()+
     theme_cowplot(font_size=10)+
-     theme(legend.just = c(0,1),
-           legend.position = c(0.05,0.95),
-           legend.spacing = unit(0,'npc'),
-           axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5),
-           plot.title = element_text(face='plain', size=14))+
-     scale_x_continuous(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0.5)),
+    theme(legend.just = c(0,1),
+          legend.position = c(0.05,0.95),
+          legend.spacing = unit(0,'npc'),
+          axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5),
+          plot.title = element_text(face='plain', size=14))+
+    scale_x_continuous(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0.5)),
   fvfm_ts +
-      guides(color=FALSE, linetype=F) + 
-        theme_cowplot(font_size=10)+
-      theme(axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5),
-            plot.title = element_text(face='plain', size=14))+
-      scale_x_continuous(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0.5)),
+    guides(color=FALSE, linetype=F) + 
+    theme_cowplot(font_size=10)+
+    theme(axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5),
+          plot.title = element_text(face='plain', size=14))+
+    scale_x_continuous(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0.5)),
   yii_ss_ts + 
     guides(color=FALSE, linetype=F) + 
-        theme_cowplot(font_size=10)+
+    theme_cowplot(font_size=10)+
     theme(axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5),
-                 plot.title = element_text(face='plain', size=14))+
+          plot.title = element_text(face='plain', size=14))+
     scale_x_continuous(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0.5)),
   npq_ss_ts +
     guides(color=FALSE, linetype=F) + 
-        theme_cowplot(font_size=10)+
+    theme_cowplot(font_size=10)+
     theme(axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5),
-         plot.title = element_text(face='plain', size=14))+
+          plot.title = element_text(face='plain', size=14))+
     scale_x_continuous(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0.5)),
   ncol=1, 
   align = 'hv',
   labels = LETTERS[c(2,5,8,11)],
   label_size = 30,
-    label_fontface = 'plain'
+  label_fontface = 'plain'
 )
 
 col2 = plot_grid(
   plantarea_raster_treatment+
-     guides(fill=F)+
-     theme(axis.title.y = element_blank(),
-           axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5))+
-     scale_fill_scico(name = 'Deviation\n(Modulus power 2)', 
-           palette = 'tofino', 
-           limits=c(-colorlimits_plantarea, colorlimits_plantarea)*1.3, 
-           oob = scales::squish,
-           trans = scales::modulus_trans(p=2))+
-     scale_x_discrete(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
-   fvfm_raster_treatment+
-     guides(fill=F)+
-     scale_fill_scico(name = 'Deviation\n(Modulus base 10)', 
-                      palette = 'lisbon', 
-                      limits=c(-colorlimits_fvfm, colorlimits_fvfm)*1.5, 
-                      oob = scales::squish,
-                      trans = scales::modulus_trans(p=10))+
-     theme(axis.title.y = element_blank(),
-           axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5))+
-     scale_x_discrete(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
-   yii_ss_raster_treatment+guides(fill=F)+
-     theme(axis.title.y = element_blank(),
-           axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5))+
-     scale_fill_scico(name = 'Deviation\n(Modulus base 10)', 
-         palette = 'lisbon', 
-         limits=c(-colorlimits_ssyii, colorlimits_ssyii)*1.2, 
-         oob = scales::squish,
-         trans = scales::modulus_trans(p=10))+
-     scale_x_discrete(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
-   npq_ss_raster_treatment+guides(fill=F)+
-     theme(axis.title.y = element_blank(),
-           axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5))+
-     scale_fill_scico(name = 'Deviation\n(Modulus power 6)', 
-         palette = 'berlin', 
-         limits=c(-colorlimits_ssnpq, colorlimits_ssnpq)*1.1, 
-         oob = scales::squish,
-         trans = scales::modulus_trans(p=6))+
-     scale_x_discrete(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
+    guides(fill=F)+
+    theme(axis.title.y = element_blank(),
+          axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5))+
+    scale_fill_scico(name = chgname, 
+                     palette = 'tofino', 
+                     limits=c(-colorlimits_plantarea, colorlimits_plantarea), 
+                     oob = scales::squish)+
+    scale_x_discrete(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
+  fvfm_raster_treatment+
+    guides(fill=F)+
+    scale_fill_scico(name = chgname, 
+                     palette = 'lisbon', 
+                     limits=c(-colorlimits_fvfm, colorlimits_fvfm), 
+                     oob = scales::squish)+
+    theme(axis.title.y = element_blank(),
+          axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5))+
+    scale_x_discrete(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
+  yii_ss_raster_treatment+guides(fill=F)+
+    theme(axis.title.y = element_blank(),
+          axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5))+
+    scale_fill_scico(name = chgname, 
+                     palette = 'lisbon', 
+                     limits=c(-colorlimits_ssyii, colorlimits_ssyii), 
+                     oob = scales::squish)+
+    scale_x_discrete(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
+  npq_ss_raster_treatment+guides(fill=F)+
+    theme(axis.title.y = element_blank(),
+          axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5))+
+    scale_fill_scico(name = chgname, 
+                     palette = 'berlin', 
+                     limits=c(-colorlimits_ssnpq, colorlimits_ssnpq), 
+                     oob = scales::squish)+
+    scale_x_discrete(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
   ncol=1, 
   align = 'hv',
   labels = LETTERS[c(3,6,9,12)],
@@ -985,67 +979,63 @@ col2 = plot_grid(
 
 col3 = plot_grid(
   plantarea_raster_wt+
-     theme(legend.position = 'right', 
-           legend.direction = 'vertical',
-           legend.box = 'vertical',
-           legend.box.just = 'left',
-           legend.spacing = unit(0,'npc'),
-           axis.title.y = element_blank(),
-           axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5))+
-     scale_fill_scico(name = 'Deviation\n(Modulus power 2)', 
-           palette = 'tofino', 
-           limits=c(-colorlimits_plantarea, colorlimits_plantarea)*1.3, 
-           oob = scales::squish,
-           trans = scales::modulus_trans(p=2))+
-     scale_x_discrete(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
-   fvfm_raster_wt+
-     theme(legend.position = 'right', 
-           legend.direction = 'vertical',
-           legend.box = 'vertical',
-           legend.box.just = 'left',
-           legend.spacing = unit(0,'npc'),
-           axis.title.y = element_blank(),
-           axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5))+
-     scale_fill_scico(name = 'Deviation\n(Modulus base 10)', 
-           palette = 'lisbon', 
-           limits=c(-colorlimits_fvfm, colorlimits_fvfm)*1.5, 
-           oob = scales::squish,
-           trans = scales::modulus_trans(p=10))+
-     scale_x_discrete(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
-   yii_ss_raster_wt+
-     theme(legend.position = 'right', 
-           legend.direction = 'vertical',
-           legend.box = 'vertical',
-           legend.box.just = 'left',
-           legend.spacing = unit(0,'npc'),
-           axis.title.y = element_blank(),
-           axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5))+
-     scale_fill_scico(name = 'Deviation\n(Modulus base 10)', 
-           palette = 'lisbon', 
-           limits=c(-colorlimits_ssyii, colorlimits_ssyii)*1.2, 
-           oob = scales::squish,
-           trans = scales::modulus_trans(p=10))+
-     scale_x_discrete(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
-   npq_ss_raster_wt+
-     theme(legend.position = 'right', 
-           legend.direction = 'vertical',
-           legend.box = 'vertical',
-           legend.box.just = 'left',
-           legend.spacing = unit(0,'npc'),
-           axis.title.y = element_blank(),
-           axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5))+
-     scale_fill_scico(name = 'Deviation\n(Modulus power 6)', 
-           palette = 'berlin', 
-           limits=c(-colorlimits_ssnpq, colorlimits_ssnpq)*1.1, 
-           oob = scales::squish,
-           trans = scales::modulus_trans(p=6))+
-     scale_x_discrete(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
-    ncol=1,
-    align = 'hv',
-    labels = LETTERS[c(4,7,10,13)],
-    label_size = 30,
-    label_fontface = 'plain',
-    hjust = 0)
+    theme(legend.position = 'right', 
+          legend.direction = 'vertical',
+          legend.box = 'vertical',
+          legend.box.just = 'left',
+          legend.spacing = unit(0,'npc'),
+          axis.title.y = element_blank(),
+          axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5))+
+    scale_fill_scico(name = chgname, 
+                     palette = 'tofino', 
+                     limits=c(-colorlimits_plantarea, colorlimits_plantarea), 
+                     oob = scales::squish)+
+    scale_x_discrete(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
+  fvfm_raster_wt+
+    theme(legend.position = 'right', 
+          legend.direction = 'vertical',
+          legend.box = 'vertical',
+          legend.box.just = 'left',
+          legend.spacing = unit(0,'npc'),
+          axis.title.y = element_blank(),
+          axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5))+
+    scale_fill_scico(name = chgname, 
+                     palette = 'lisbon', 
+                     limits=c(-colorlimits_fvfm, colorlimits_fvfm), 
+                     oob = scales::squish)+
+    scale_x_discrete(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
+  yii_ss_raster_wt+
+    theme(legend.position = 'right', 
+          legend.direction = 'vertical',
+          legend.box = 'vertical',
+          legend.box.just = 'left',
+          legend.spacing = unit(0,'npc'),
+          axis.title.y = element_blank(),
+          axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5))+
+    scale_fill_scico(name = chgname, 
+                     palette = 'lisbon', 
+                     limits=c(-colorlimits_ssyii, colorlimits_ssyii)*1.2, 
+                     oob = scales::squish)+
+    scale_x_discrete(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
+  npq_ss_raster_wt+
+    theme(legend.position = 'right', 
+          legend.direction = 'vertical',
+          legend.box = 'vertical',
+          legend.box.just = 'left',
+          legend.spacing = unit(0,'npc'),
+          axis.title.y = element_blank(),
+          axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5))+
+    scale_fill_scico(name = chgname, 
+                     palette = 'berlin', 
+                     limits=c(-colorlimits_ssnpq, colorlimits_ssnpq), 
+                     oob = scales::squish)+
+    scale_x_discrete(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
+  ncol=1,
+  align = 'hv',
+  labels = LETTERS[c(4,7,10,13)],
+  label_size = 30,
+  label_fontface = 'plain',
+  hjust = 0)
 
 
 compfig = plot_grid(col1,col2,col3, rel_widths = c(1,1.15,1.4), ncol=3, axis='b')

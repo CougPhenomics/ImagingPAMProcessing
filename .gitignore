@@ -48,3 +48,6 @@ output/*/
 
 *.zip
 packrat/lib*/
+
+# ignore html reports
+*.html
