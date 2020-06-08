@@ -1014,7 +1014,7 @@ col3 = plot_grid(
           axis.text.x = element_text(angle=0, hjust=0.5, vjust=0.5))+
     scale_fill_scico(name = chgname, 
                      palette = 'lisbon', 
-                     limits=c(-colorlimits_ssyii, colorlimits_ssyii)*1.2, 
+                     limits=c(-colorlimits_ssyii, colorlimits_ssyii), 
                      oob = scales::squish)+
     scale_x_discrete(name = 'Day of Treatment', breaks = unique(data$idate), expand=c(0,0)),
   npq_ss_raster_wt+
